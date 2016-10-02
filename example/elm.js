@@ -5144,19 +5144,25 @@ var _Bogdanp$elm_ast$Ast_Helpers$symbolicOperator = A2(
 	});
 var _Bogdanp$elm_ast$Ast_Helpers$reserved = _elm_lang$core$Native_List.fromArray(
 	['module', 'where', 'import', 'as', 'exposing', 'type', 'alias', 'port', 'if', 'then', 'else', 'let', 'in', 'case', 'of']);
-var _Bogdanp$elm_ast$Ast_Helpers$loName = A2(
-	_Bogdanp$elm_combine$Combine$andThen,
-	_Bogdanp$elm_ast$Ast_Helpers$name(_Bogdanp$elm_combine$Combine_Char$lower),
-	function (n) {
-		return A2(_elm_lang$core$List$member, n, _Bogdanp$elm_ast$Ast_Helpers$reserved) ? _Bogdanp$elm_combine$Combine$fail(
-			_elm_lang$core$Native_List.fromArray(
-				[
-					A2(
-					_elm_lang$core$Basics_ops['++'],
-					'name \'',
-					A2(_elm_lang$core$Basics_ops['++'], n, '\' is reserved'))
-				])) : _Bogdanp$elm_combine$Combine$succeed(n);
-	});
+var _Bogdanp$elm_ast$Ast_Helpers$loName = function () {
+	var loName$ = A2(
+		_Bogdanp$elm_combine$Combine$andThen,
+		_Bogdanp$elm_ast$Ast_Helpers$name(_Bogdanp$elm_combine$Combine_Char$lower),
+		function (n) {
+			return A2(_elm_lang$core$List$member, n, _Bogdanp$elm_ast$Ast_Helpers$reserved) ? _Bogdanp$elm_combine$Combine$fail(
+				_elm_lang$core$Native_List.fromArray(
+					[
+						A2(
+						_elm_lang$core$Basics_ops['++'],
+						'name \'',
+						A2(_elm_lang$core$Basics_ops['++'], n, '\' is reserved'))
+					])) : _Bogdanp$elm_combine$Combine$succeed(n);
+		});
+	return A2(
+		_Bogdanp$elm_combine$Combine_Infix_ops['<|>'],
+		_Bogdanp$elm_combine$Combine$string('_'),
+		loName$);
+}();
 var _Bogdanp$elm_ast$Ast_Helpers$operator = A2(
 	_Bogdanp$elm_combine$Combine_Infix_ops['<|>'],
 	A2(
@@ -7190,7 +7196,7 @@ var _Bogdanp$elm_ast$Ast_Expression$record = function (ops) {
 				_Bogdanp$elm_combine$Combine_Infix_ops['<$>'],
 				_Bogdanp$elm_ast$Ast_Expression$Record,
 				_Bogdanp$elm_combine$Combine$braces(
-					_Bogdanp$elm_ast$Ast_Helpers$commaSeparated(
+					_Bogdanp$elm_ast$Ast_Helpers$commaSeparated$(
 						A2(
 							_Bogdanp$elm_combine$Combine_Infix_ops['<*>'],
 							A2(
@@ -7352,7 +7358,7 @@ var _Bogdanp$elm_ast$Ast_Statement$typeRecord = _Bogdanp$elm_combine$Combine$rec
 var _Bogdanp$elm_ast$Ast_Statement$typeRecordPairs = _Bogdanp$elm_combine$Combine$rec(
 	function (_p10) {
 		var _p11 = _p10;
-		return _Bogdanp$elm_ast$Ast_Helpers$commaSeparated(_Bogdanp$elm_ast$Ast_Statement$typeRecordPair);
+		return _Bogdanp$elm_ast$Ast_Helpers$commaSeparated$(_Bogdanp$elm_ast$Ast_Statement$typeRecordPair);
 	});
 var _Bogdanp$elm_ast$Ast_Statement$typeRecordPair = _Bogdanp$elm_combine$Combine$rec(
 	function (_p12) {
@@ -7393,7 +7399,7 @@ var _Bogdanp$elm_ast$Ast_Statement$typeTuple = _Bogdanp$elm_combine$Combine$rec(
 			_Bogdanp$elm_combine$Combine_Infix_ops['<$>'],
 			_Bogdanp$elm_ast$Ast_Statement$TypeTuple,
 			_Bogdanp$elm_combine$Combine$parens(
-				_Bogdanp$elm_ast$Ast_Helpers$commaSeparated(_Bogdanp$elm_ast$Ast_Statement$type$)));
+				_Bogdanp$elm_ast$Ast_Helpers$commaSeparated$(_Bogdanp$elm_ast$Ast_Statement$type$)));
 	});
 var _Bogdanp$elm_ast$Ast_Statement$Comment = function (a) {
 	return {ctor: 'Comment', _0: a};
