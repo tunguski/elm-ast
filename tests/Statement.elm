@@ -1,18 +1,15 @@
 module Statement exposing (all)
 
-import Test exposing (describe, test, Test)
-import Expect exposing (..)
-
 import Ast exposing (parseStatement, parse)
 import Ast.BinOp exposing (Assoc(..), operators)
 import Ast.Expression exposing (Expression(..))
 import Ast.Statement exposing (ExportSet(..), Type(..), Statement(..))
-
-type alias Expectation = Expect.Expectation
+import Expect exposing (..)
+import Test exposing (describe, test, Test)
 
 is : String -> Statement -> Expectation
 is i s =
-  case parseStatement operators i of
+   case parseStatement operators i of
     (Ok r, _) ->
       Expect.equal r s
 
@@ -274,6 +271,28 @@ moduleFixityDeclarations =
          ]
 
 
+emptyRecordAliasInput : String
+emptyRecordAliasInput = """
+type alias A = {}
+"""
+
+emptyTupleAliasInput : String
+emptyTupleAliasInput = """
+type alias A = ()
+"""
+
+typeDeclarations : Test
+typeDeclarations =
+  describe "type declarations"
+    [ test "can parse empty record aliases" <|
+        \() ->
+          emptyRecordAliasInput `are` [TypeAliasDeclaration (TypeConstructor ["A"] []) (TypeRecord [])]
+
+    , test "can parse aliases of unit" <|
+        \() ->
+          emptyTupleAliasInput `are` [TypeAliasDeclaration (TypeConstructor ["A"] []) (TypeTuple [])]
+    ]
+
 
 all : Test
 all =
@@ -286,4 +305,5 @@ all =
     , singleDeclaration
     , multipleDeclarations
     , moduleFixityDeclarations
+    , typeDeclarations
     ]
