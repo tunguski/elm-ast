@@ -1,7 +1,7 @@
 {
     "version": "1.0.2",
     "summary": "A parser for Elm code",
-    "repository": "https://github.com/brainrape/elm-ast.git",
+    "repository": "https://github.com/tunguski/elm-ast.git",
     "license": "BSD3",
     "source-directories": [
         "src",
