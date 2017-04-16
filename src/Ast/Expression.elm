@@ -133,10 +133,28 @@ lambda ops =
       <$> (symbol "\\" *> many (between_ spaces loName))
       <*> (symbol "->" *> expression ops)
 
+{- Parse function application.
+   Parse function arguments as long as _beginning_ of next expression
+   is indented more than function name.
+-}
 application : OpTable -> Parser s Expression
 application ops =
   lazy <| \() ->
-    term ops |> chainl (Application <$ spaces_)
+--    term ops |> chainl (Application <$ spaces_)
+    withLocation (\location ->
+        term ops |> chainl (Application <$
+            ( lookAhead (whitespace *>
+                (primitive (\state inputStream ->
+                    (state, inputStream, Ok (location.column < (currentLocation inputStream).column))
+                )))
+                |> andThen (\isIndented ->
+                    case isIndented of
+                        True -> whitespace
+                        False -> spaces_
+                )
+            )
+        )
+    )
 
 binary : OpTable -> Parser s Expression
 binary ops =
