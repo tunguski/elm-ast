@@ -161,7 +161,12 @@ tree (name, moduleText, ast) =
             ul [] (List.map statement statements)
 
         err ->
-            text <| toString err
+            div
+                [ style
+                    [ ( "margin", "10px" )
+                    ]
+                ]
+                [ text <| toString err ]
 
 
 countItems value model =
