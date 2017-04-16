@@ -5,6 +5,7 @@ import Ast.Expression exposing (..)
 import Ast.Statement exposing (..)
 import Html exposing (..)
 import Html
+import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Json.Decode as JD
 
@@ -24,6 +25,21 @@ g : Int -> Int
 g x = x * 2
 
 h = f << g
+
+
+update : Msg -> String -> String
+update action model =
+    case action of
+        Replace m ->
+            m
+
+
+withChild : a -> List (Html Msg) -> Html Msg
+withChild title children =
+    li []
+        [ pre [] [ text <| toString title ]
+        , ul [] children
+        ]
 """
 
 
@@ -81,8 +97,23 @@ tree m =
 view : String -> Html Msg
 view model =
     div []
-        [ textarea [ on "input" (JD.map Replace targetValue) ] [ text model ]
-        , tree model
+        [ textarea
+            [ on "input" (JD.map Replace targetValue)
+            , style
+                [ ( "height", "600px" )
+                , ( "width", "30%" )
+                , ( "display", "inline-block" )
+                ]
+            ]
+            [ text model ]
+        , div
+            [ style
+                [ ( "display", "inline-block" )
+                , ( "width", "69%" )
+                , ( "vertical-align", "top" )
+                ]
+            ]
+            [ tree model ]
         ]
 
 
