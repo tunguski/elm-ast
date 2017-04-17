@@ -4,10 +4,12 @@ import Combine exposing (..)
 import Combine.Char exposing (..)
 import String
 
+
 type alias Name = String
 type alias QualifiedType = List Name
 type alias ModuleName = List String
 type alias Alias = String
+
 
 reserved : List Name
 reserved = [ "module", "where"
@@ -17,37 +19,47 @@ reserved = [ "module", "where"
            , "let", "in", "case", "of"
            ]
 
+
 reservedOperators : List Name
 reservedOperators =  [ "=", ".", "..", "->", "--", "|", ":" ]
+
 
 between_ : Parser s a -> Parser s res -> Parser s res
 between_ p = between p p
 
+
 spaces : Parser s String
 spaces = regex "[ \t]*"
 
+
 spaces_ : Parser s String
 spaces_ = regex "[ \t]+"
+
 
 symbol : String -> Parser s String
 symbol k =
   between_ whitespace (string k)
 
+
 initialSymbol : String -> Parser s String
 initialSymbol k =
   string k <* spaces
+
 
 commaSeparated : Parser s res -> Parser s (List res)
 commaSeparated p =
   sepBy1 (string ",") (between_ whitespace p)
 
+
 commaSeparated_ : Parser s res -> Parser s (List res)
 commaSeparated_ p =
   sepBy (string ",") (between_ whitespace p)
 
+
 name : Parser s Char -> Parser s String
 name p =
-  String.cons <$> p <*> regex "[a-zA-Z0-9-_]*"
+  String.cons <$> p <*> regex "[a-zA-Z0-9_]*"
+
 
 loName : Parser s String
 loName =
@@ -61,8 +73,13 @@ loName =
   in
     string "_" <|> loName_
 
+
+
+
+
 upName : Parser s String
 upName = name upper
+
 
 operator : Parser s String
 operator =
@@ -72,9 +89,21 @@ operator =
       then fail <| "operator '" ++ n ++ "' is reserved"
       else succeed n)
 
+
 functionName : Parser s String
 functionName = loName
+
+
+functionOrOperator : Parser s String
+functionOrOperator =
+    (choice [ functionName
+            , parens operator
+            ]
+    )
+
 
 moduleName : Parser s ModuleName
 moduleName =
   between_ spaces <| sepBy1 (string ".") upName
+
+

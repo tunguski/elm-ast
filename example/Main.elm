@@ -2,7 +2,6 @@ module Main exposing (main)
 
 import Ast
 import Ast.Expression exposing (..)
-import Ast.Statement exposing (..)
 import Html exposing (..)
 import Html
 import Html.Attributes exposing (..)
@@ -164,6 +163,7 @@ tree (name, moduleText, ast) =
             div
                 [ style
                     [ ( "margin", "10px" )
+                    , ( "min-height", "600px" )
                     ]
                 ]
                 [ text <| toString err ]
