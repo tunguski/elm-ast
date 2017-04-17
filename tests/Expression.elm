@@ -97,10 +97,14 @@ literals =
 records : Test
 records =
     describe "Records"
-        [ test "multiple fields" <|
+        [ test "single field" <|
+            \() -> "{a=x}" |> is (Record
+                                            [ ("a", Variable ["x"] )
+                                            ])
+        , test "multiple fields" <|
             \() -> "{a=x,b=y}" |> is (Record
-                                            [ ("a", String "x")
-                                            , ("b", String "y")
+                                            [ ("a", Variable ["x"] )
+                                            , ("b", Variable ["y"] )
                                             ])
         ]
 
