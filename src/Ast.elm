@@ -15,8 +15,7 @@ module Ast exposing
 import Combine exposing (end, (<*))
 
 import Ast.BinOp exposing (OpTable, operators)
-import Ast.Expression exposing (Expression, expression)
-import Ast.Statement exposing (Statement, statement, statements, opTable)
+import Ast.Expression exposing (Expression, expression, Statement, statement, statements, opTable)
 
 
 {-| Parse an Elm expression. -}
