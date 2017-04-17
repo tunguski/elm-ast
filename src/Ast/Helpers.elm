@@ -78,7 +78,7 @@ functionName = loName
 functionOrOperator : Parser s String
 functionOrOperator =
     (choice [ functionName
-            , (string "(") *> operator <* (string ")")
+            , parens operator
             ]
     )
 
