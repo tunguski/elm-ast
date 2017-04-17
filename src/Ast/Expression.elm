@@ -140,7 +140,6 @@ lambda ops =
 application : OpTable -> Parser s Expression
 application ops =
   lazy <| \() ->
---    term ops |> chainl (Application <$ spaces_)
     withLocation (\location ->
         term ops |> chainl (Application <$
             ( lookAhead (whitespace *>
@@ -175,11 +174,23 @@ binary ops =
 
 term : OpTable -> Parser s Expression
 term ops =
-  lazy <| \() ->
-    choice [ character, string, float, integer, access, variable
-           , list ops, record ops
-           , parens (expression ops)
-           ]
+  lazy <| \() -> choice
+    [ character
+    , string
+    , float
+    , integer
+    , access
+    , variable
+    , list ops
+    , record ops
+    , parens (expression ops)
+    , parens (many <| Combine.string ",") |> map (\i ->
+        let
+            x = Debug.log "i" i
+        in
+            String <| "createTuple" ++ (toString <| List.length i)
+        )
+    ]
 
 {-| A parser for Elm expressions. -}
 expression : OpTable -> Parser s Expression
