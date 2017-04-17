@@ -66,11 +66,7 @@ allExport =
 
 functionExport : Parser s ExportSet
 functionExport =
-  FunctionExport <$>
-    (choice [ functionName
-            , (string "(") *> operator <* (string ")")
-            ]
-    )
+  FunctionExport <$> functionOrOperator
 
 constructorSubsetExports : Parser s ExportSet
 constructorSubsetExports =
@@ -233,12 +229,12 @@ portDeclaration ops =
 -- ---------
 functionTypeDeclaration : Parser s Statement
 functionTypeDeclaration =
-  FunctionTypeDeclaration <$> (loName <* symbol ":") <*> typeAnnotation
+  FunctionTypeDeclaration <$> (functionOrOperator <* symbol ":") <*> typeAnnotation
 
 functionDeclaration : OpTable -> Parser s Statement
 functionDeclaration ops =
   FunctionDeclaration
-    <$> loName
+    <$> functionOrOperator
     <*> (many (between_ whitespace loName))
     <*> (symbol "=" *> whitespace *> expression ops)
 

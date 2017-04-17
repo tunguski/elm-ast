@@ -75,6 +75,13 @@ operator =
 functionName : Parser s String
 functionName = loName
 
+functionOrOperator : Parser s String
+functionOrOperator =
+    (choice [ functionName
+            , (string "(") *> operator <* (string ")")
+            ]
+    )
+
 moduleName : Parser s ModuleName
 moduleName =
   between_ spaces <| sepBy1 (string ".") upName
