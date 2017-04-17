@@ -74,9 +74,6 @@ loName =
     string "_" <|> loName_
 
 
-
-
-
 upName : Parser s String
 upName = name upper
 

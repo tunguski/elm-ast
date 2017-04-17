@@ -146,7 +146,7 @@ expression e =
 statement : Statement -> Html Msg
 statement s =
     case s of
-        FunctionDeclaration _ _ e ->
+        FunctionDeclaration (Function _ _ e) ->
             withChild s [ expression e ]
 
         s ->

@@ -4,6 +4,7 @@ module Ast.Expression exposing
     , ExportSet(..)
     , Type(..)
     , Statement(..)
+    , Function(..)
     , statement
     , statements
     , infixStatements
@@ -46,7 +47,7 @@ type Expression
   | Record (List (Name, Expression))
   | RecordUpdate Name (List (Name, Expression))
   | If Expression Expression Expression
-  | Let (List Statement) Expression
+  | Let (List LetBinding) Expression
   | Case Expression (List (Expression, Expression))
   | Lambda (List Name) Expression
   | Application Expression Expression
@@ -97,12 +98,21 @@ record ops =
   lazy <| \() ->
     Record <$> braces (commaSeparated_ ((,) <$> loName <*> (symbol "=" *> expression ops)))
 
+
 letExpression : OpTable -> Parser s Expression
 letExpression ops =
     lazy <| \() ->
       Let
-        <$> (symbol "let" *> many1 (functionDeclaration ops))
+        <$> (symbol "let" *> many1 (
+                choice
+                    [ FunctionBinding <$> functionDeclaration ops
+                    , DestructuringBinding
+                        <$> functionParameter
+                        <*> (symbol "=" *> expression ops)
+                    ]
+            ))
         <*> (symbol "in" *> expression ops)
+
 
 ifExpression : OpTable -> Parser s Expression
 ifExpression ops =
@@ -320,6 +330,17 @@ type Parameter
 --    | NamedRecordParam (List Parameter) String
 
 
+{-| Function declaration type -}
+type Function
+    = Function Name (List Parameter) Expression
+
+
+{-| Let binding type -}
+type LetBinding
+    = FunctionBinding Function
+    | DestructuringBinding Parameter Expression
+
+
 {-| Representations for Elm's statements. -}
 type Statement
   = ModuleDeclaration ModuleName ExportSet
@@ -330,7 +351,7 @@ type Statement
   | PortTypeDeclaration Name Type
   | PortDeclaration Name (List Name) Expression
   | FunctionTypeDeclaration Name Type
-  | FunctionDeclaration Name (List Parameter) Expression
+  | FunctionDeclaration Function
   | InfixDeclaration Assoc Int Name
   | Comment String
 
@@ -521,9 +542,9 @@ functionTypeDeclaration =
   FunctionTypeDeclaration <$> (functionOrOperator <* symbol ":") <*> typeAnnotation
 
 
-functionDeclaration : OpTable -> Parser s Statement
+functionDeclaration : OpTable -> Parser s Function
 functionDeclaration ops =
-  FunctionDeclaration
+  Function
     <$> functionOrOperator
     <*> (many (between_ whitespace functionParameter))
     <*> (symbol "=" *> whitespace *> expression ops)
@@ -587,7 +608,7 @@ statement ops =
          , portTypeDeclaration
          , portDeclaration ops
          , functionTypeDeclaration
-         , functionDeclaration ops
+         , FunctionDeclaration <$> functionDeclaration ops
          , infixDeclaration
          , comment
          ]
