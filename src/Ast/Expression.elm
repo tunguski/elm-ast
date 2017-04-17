@@ -314,6 +314,7 @@ type Type
 {-| Representation for Elm's functions' parameter structure -}
 type Parameter
     = RefParam String
+    | AdtParam String (List Parameter)
     | TupleParam (List Parameter)
 --    | RecordParam (List Parameter)
 --    | NamedRecordParam (List Parameter) String
@@ -533,6 +534,7 @@ functionParameter =
     lazy (\_ ->
         choice
             [ RefParam <$> loName
+            , AdtParam <$> upName <*> (many (between_ whitespace functionParameter))
             , TupleParam <$> (parens <| commaSeparated functionParameter )
             --, recordFields
             --, namedRecordFields
