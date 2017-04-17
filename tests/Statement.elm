@@ -2,8 +2,7 @@ module Statement exposing (all)
 
 import Ast exposing (parseStatement, parse)
 import Ast.BinOp exposing (Assoc(..), operators)
-import Ast.Expression exposing (Expression(..))
-import Ast.Statement exposing (ExportSet(..), Type(..), Statement(..))
+import Ast.Expression exposing (Expression(..), ExportSet(..), Type(..), Statement(..))
 import Expect exposing (..)
 import Test exposing (describe, test, Test)
 
