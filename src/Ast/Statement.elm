@@ -96,7 +96,7 @@ exports =
 -- -----
 typeVariable : Parser s Type
 typeVariable =
-  TypeVariable <$> regex "[a-z]+"
+  TypeVariable <$> loName
 
 typeConstant : Parser s Type
 typeConstant =
