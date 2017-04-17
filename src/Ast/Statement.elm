@@ -27,12 +27,14 @@ import Ast.BinOp exposing (Assoc(..), OpTable)
 import Ast.Expression exposing (Expression, expression)
 import Ast.Helpers exposing (..)
 
+
 {-| Representations for modules' exports. -}
 type ExportSet
   = AllExport
   | SubsetExport (List ExportSet)
   | FunctionExport Name
   | TypeExport Name (Maybe ExportSet)
+
 
 {-| Representations for Elm's type syntax. -}
 type Type
@@ -42,6 +44,15 @@ type Type
   | TypeRecord (List (Name, Type))
   | TypeTuple (List Type)
   | TypeApplication Type Type
+
+
+{-| Representation for Elm's functions' parameter structure -}
+type Parameter
+    = RefParam String
+    | TupleParam (List Parameter)
+--    | RecordParam (List Parameter)
+--    | NamedRecordParam (List Parameter) String
+
 
 {-| Representations for Elm's statements. -}
 type Statement
@@ -53,24 +64,29 @@ type Statement
   | PortTypeDeclaration Name Type
   | PortDeclaration Name (List Name) Expression
   | FunctionTypeDeclaration Name Type
-  | FunctionDeclaration Name (List Name) Expression
+  | FunctionDeclaration Name (List Parameter) Expression
   | InfixDeclaration Assoc Int Name
   | Comment String
 
 
 -- Exports
 -- -------
+
+
 allExport : Parser s ExportSet
 allExport =
   AllExport <$ symbol ".."
+
 
 functionExport : Parser s ExportSet
 functionExport =
   FunctionExport <$> functionOrOperator
 
+
 constructorSubsetExports : Parser s ExportSet
 constructorSubsetExports =
   SubsetExport <$> commaSeparated (FunctionExport <$> upName)
+
 
 constructorExports : Parser s (Maybe ExportSet)
 constructorExports =
@@ -78,14 +94,17 @@ constructorExports =
                             , constructorSubsetExports
                             ]
 
+
 typeExport : Parser s ExportSet
 typeExport =
   TypeExport <$> (upName <* spaces) <*> constructorExports
+
 
 subsetExport : Parser s ExportSet
 subsetExport =
   SubsetExport
     <$> commaSeparated (functionExport |> or typeExport)
+
 
 exports : Parser s ExportSet
 exports =
@@ -211,11 +230,13 @@ typeDeclaration =
 -- Ports
 -- -----
 
+
 portTypeDeclaration : Parser s Statement
 portTypeDeclaration =
   PortTypeDeclaration
     <$> (initialSymbol "port" *> loName)
     <*> (symbol ":" *> typeAnnotation)
+
 
 portDeclaration : OpTable -> Parser s Statement
 portDeclaration ops =
@@ -227,20 +248,37 @@ portDeclaration ops =
 
 -- Functions
 -- ---------
+
+
 functionTypeDeclaration : Parser s Statement
 functionTypeDeclaration =
   FunctionTypeDeclaration <$> (functionOrOperator <* symbol ":") <*> typeAnnotation
+
 
 functionDeclaration : OpTable -> Parser s Statement
 functionDeclaration ops =
   FunctionDeclaration
     <$> functionOrOperator
-    <*> (many (between_ whitespace loName))
+    <*> (many (between_ whitespace functionParameter))
     <*> (symbol "=" *> whitespace *> expression ops)
+
+
+functionParameter : Parser s Parameter
+functionParameter =
+    lazy (\_ ->
+        choice
+            [ RefParam <$> loName
+            , TupleParam <$> (parens <| commaSeparated functionParameter )
+            --, recordFields
+            --, namedRecordFields
+            ]
+    )
 
 
 -- Infix declarations
 -- ------------------
+
+
 infixDeclaration : Parser s Statement
 infixDeclaration =
   InfixDeclaration
@@ -254,13 +292,17 @@ infixDeclaration =
 
 -- Comments
 -- --------
+
+
 singleLineComment : Parser s Statement
 singleLineComment =
   Comment <$> (string "--" *> regex ".*" <* whitespace)
 
+
 multiLineComment : Parser s Statement
 multiLineComment =
   (Comment << String.fromList) <$> (string "{-" *> manyTill anyChar (string "-}"))
+
 
 comment : Parser s Statement
 comment =
@@ -283,10 +325,12 @@ statement ops =
          , comment
          ]
 
+
 {-| A parser for a series of Elm statements. -}
 statements : OpTable -> Parser s (List Statement)
 statements ops =
   manyTill (whitespace *> statement ops <* whitespace) end
+
 
 {-| A scanner for infix statements. This is useful for performing a
 first pass over a module to find all of the infix declarations in it.
