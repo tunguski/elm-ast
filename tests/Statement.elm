@@ -2,7 +2,7 @@ module Statement exposing (all)
 
 import Ast exposing (parseStatement, parse)
 import Ast.BinOp exposing (Assoc(..), operators)
-import Ast.Expression exposing (Expression(..), ExportSet(..), Type(..), Statement(..))
+import Ast.Expression exposing (..)
 import Expect exposing (..)
 import Test exposing (describe, test, Test)
 
@@ -197,10 +197,10 @@ singleDeclaration =
          [ FunctionTypeDeclaration "f" (TypeApplication
                                           (TypeConstructor ["Int"] [])
                                           (TypeConstructor ["Int"] []))
-         , FunctionDeclaration "f" ["x"] (BinOp
-                                            (Variable ["+"])
-                                            (Variable ["x"])
-                                            (Integer 1))
+         , FunctionDeclaration <| Function "f" [RefParam "x"] (BinOp
+                                                        (Variable ["+"])
+                                                        (Variable ["x"])
+                                                        (Integer 1))
          ]
 
 multipleDeclarationsInput : String
@@ -221,14 +221,14 @@ multipleDeclarations =
          [ FunctionTypeDeclaration "f" (TypeApplication
                                           (TypeConstructor ["Int"] [])
                                           (TypeConstructor ["Int"] []))
-         , FunctionDeclaration "f" ["x"] (BinOp
+         , FunctionDeclaration <| Function "f" [RefParam "x"] (BinOp
                                             (Variable ["+"])
                                             (Variable ["x"])
                                             (Integer 1))
          , FunctionTypeDeclaration "g" (TypeApplication
                                           (TypeConstructor ["Int"] [])
                                           (TypeConstructor ["Int"] []))
-         , FunctionDeclaration "g" ["x"] (BinOp
+         , FunctionDeclaration <| Function "g" [RefParam "x"] (BinOp
                                             (Variable ["+"])
                                             (Application
                                                (Variable ["f"])
@@ -251,7 +251,7 @@ moduleFixityDeclarations : Test
 moduleFixityDeclarations =
   test "module fixity scanning" <|
     \() -> moduleFixityInput |> are
-         [ FunctionDeclaration "f" [] (BinOp
+         [ FunctionDeclaration <| Function "f" [] (BinOp
                                          (Variable ["++"])
                                          (BinOp
                                             (Variable ["++"])
@@ -259,7 +259,7 @@ moduleFixityDeclarations =
                                             (Variable ["b"]))
                                          (Variable ["c"]))
          , InfixDeclaration L 1 "++"
-         , FunctionDeclaration "g" [] (BinOp
+         , FunctionDeclaration <| Function "g" [] (BinOp
                                          (Variable ["**"])
                                          (Variable ["a"])
                                          (BinOp

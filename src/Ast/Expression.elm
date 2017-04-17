@@ -5,6 +5,8 @@ module Ast.Expression exposing
     , Type(..)
     , Statement(..)
     , Function(..)
+    , LetBinding(..)
+    , Parameter(..)
     , statement
     , statements
     , infixStatements
@@ -92,6 +94,7 @@ list : OpTable -> Parser s Expression
 list ops =
   lazy <| \() ->
     List <$> brackets (commaSeparated_ (expression ops))
+
 
 record : OpTable -> Parser s Expression
 record ops =
