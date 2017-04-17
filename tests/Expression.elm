@@ -93,17 +93,34 @@ literals =
     , stringLiterals
     ]
 
+
+records : Test
+records =
+    describe "Records"
+        [ test "single field" <|
+            \() -> "{a=x}" |> is (Record
+                                            [ ("a", Variable ["x"] )
+                                            ])
+        , test "multiple fields" <|
+            \() -> "{a=x,b=y}" |> is (Record
+                                            [ ("a", Variable ["x"] )
+                                            , ("b", Variable ["y"] )
+                                            ])
+        ]
+
+
+
 letExpressions : Test
 letExpressions =
   describe "Let"
     [ test "single binding" <|
         \() -> "let a = 42 in a" |> is ((Let
-                                         [("a", Integer 42)]
+                                         [ FunctionBinding (Function "a" [] (Integer 42) ) ]
                                          (Variable ["a"])))
 
     , test "bind to _" <|
         \() -> "let _ = 42 in 24" |> is ((Let
-                                          [("_", Integer 42)]
+                                          [ FunctionBinding (Function "_" [] (Integer 42) ) ]
                                           (Integer 24)))
 
     , test "multiple bindings" <|
@@ -115,8 +132,8 @@ let
 in
   b
             """ |> is ((Let
-                        [ ("a", Integer 42)
-                        , ("b", (BinOp (Variable ["+"]) (Variable ["a"]) (Integer 1)))
+                        [ FunctionBinding (Function "a" [] (Integer 42))
+                        , FunctionBinding (Function "b" [] (BinOp (Variable ["+"]) (Variable ["a"]) (Integer 1)))
                         ]
                         (Variable ["b"])))
     ]
@@ -179,6 +196,7 @@ all =
   describe "Expression suite"
     [ literals
     , letExpressions
+    , records
     , caseExpressions
     , application
     ]
