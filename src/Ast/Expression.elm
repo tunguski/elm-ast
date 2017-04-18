@@ -44,6 +44,8 @@ type Expression
   | Integer Int
   | Float Float
   | Variable (List Name)
+  | TupleExpr (List Expression)
+  | OperatorReference String
   | List (List Expression)
   | Access Expression (List Name)
   | Record (List (Name, Expression))
@@ -51,7 +53,7 @@ type Expression
   | If Expression Expression Expression
   | Let (List LetBinding) Expression
   | Case Expression (List (Expression, Expression))
-  | Lambda (List Name) Expression
+  | Lambda (List Parameter) Expression
   | Application Expression Expression
   | BinOp Expression Expression Expression
 
@@ -102,18 +104,25 @@ record ops =
     Record <$> braces (commaSeparated_ ((,) <$> loName <*> (symbol "=" *> expression ops)))
 
 
+tuple : OpTable -> Parser s Expression
+tuple ops =
+    lazy (\_ ->
+        TupleExpr <$> (parens <| commaSeparated (expression ops))
+    )
+
+
 letExpression : OpTable -> Parser s Expression
 letExpression ops =
     lazy <| \() ->
       Let
-        <$> (symbol "let" *> many1 (
+        <$> (symbol "let" *> (many <| between_ whitespace (
                 choice
                     [ FunctionBinding <$> functionDeclaration ops
                     , DestructuringBinding
-                        <$> functionParameter
+                        <$> (functionParameter ops)
                         <*> (symbol "=" *> expression ops)
                     ]
-            ))
+            )))
         <*> (symbol "in" *> expression ops)
 
 
@@ -143,7 +152,7 @@ lambda : OpTable -> Parser s Expression
 lambda ops =
   lazy <| \() ->
     Lambda
-      <$> (symbol "\\" *> many (between_ spaces loName))
+      <$> (symbol "\\" *> many (between_ spaces (functionParameter ops)))
       <*> (symbol "->" *> expression ops)
 
 {- Parse function application.
@@ -194,9 +203,11 @@ term ops =
     , integer
     , access
     , variable
+    , OperatorReference <$> operatorReference
     , list ops
     , record ops
     , parens (expression ops)
+    , tuple ops
     , parens (many <| Combine.string ",") |> map (\i ->
         let
             x = Debug.log "i" i
@@ -347,7 +358,7 @@ type LetBinding
 {-| Representations for Elm's statements. -}
 type Statement
   = ModuleDeclaration ModuleName ExportSet
-  | PortModuleDeclaration ModuleName ExportSet
+  | EffectsModuleDeclaration ModuleName Expression ExportSet
   | ImportStatement ModuleName (Maybe Alias) (Maybe ExportSet)
   | TypeAliasDeclaration Type Type
   | TypeDeclaration Type (List Type)
@@ -479,10 +490,11 @@ typeAnnotation =
 
 -- Modules
 -- -------
-portModuleDeclaration : Parser s Statement
-portModuleDeclaration =
-  PortModuleDeclaration
-    <$> (initialSymbol "port" *> symbol "module" *> moduleName)
+effectsModuleDeclaration : Parser s Statement
+effectsModuleDeclaration =
+  EffectsModuleDeclaration
+    <$> (initialSymbol "effect" *> symbol "module" *> moduleName)
+    <*> (symbol "where" *> record operators)
     <*> (symbol "exposing" *> exports)
 
 moduleDeclaration : Parser s Statement
@@ -549,17 +561,17 @@ functionDeclaration : OpTable -> Parser s Function
 functionDeclaration ops =
   Function
     <$> functionOrOperator
-    <*> (many (between_ whitespace functionParameter))
+    <*> (many (between_ whitespace (functionParameter ops)))
     <*> (symbol "=" *> whitespace *> expression ops)
 
 
-functionParameter : Parser s Parameter
-functionParameter =
+functionParameter : OpTable -> Parser s Parameter
+functionParameter ops =
     lazy (\_ ->
         choice
             [ RefParam <$> loName
-            , AdtParam <$> upName <*> (many (between_ whitespace functionParameter))
-            , TupleParam <$> (parens <| commaSeparated functionParameter )
+            , AdtParam <$> upName <*> (many (between_ whitespace (functionParameter ops)))
+            , TupleParam <$> (parens <| commaSeparated (functionParameter ops))
             --, recordFields
             --, namedRecordFields
             ]
@@ -603,7 +615,7 @@ comment =
 {-| A parser for stand-alone Elm statements. -}
 statement : OpTable -> Parser s Statement
 statement ops =
-  choice [ portModuleDeclaration
+  choice [ effectsModuleDeclaration
          , moduleDeclaration
          , importStatement
          , typeAliasDeclaration

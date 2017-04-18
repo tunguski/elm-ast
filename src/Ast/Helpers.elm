@@ -21,7 +21,7 @@ reserved = [ "module", "where"
 
 
 reservedOperators : List Name
-reservedOperators =  [ "=", ".", "..", "->", "--", "|", ":" ]
+reservedOperators =  [ "=", ".", "..", "->", "--", "|", ":", "," ]
 
 
 between_ : Parser s a -> Parser s res -> Parser s res
@@ -87,16 +87,21 @@ operator =
       else succeed n)
 
 
+operatorReference : Parser s String
+operatorReference =
+    parens operator
+
+
 functionName : Parser s String
 functionName = loName
 
 
 functionOrOperator : Parser s String
 functionOrOperator =
-    (choice [ functionName
-            , parens operator
-            ]
-    )
+    choice [ functionName
+           , operatorReference
+           ]
+
 
 
 moduleName : Parser s ModuleName
