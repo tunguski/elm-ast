@@ -52,7 +52,7 @@ type Expression
   | If Expression Expression Expression
   | Let (List LetBinding) Expression
   | Case Expression (List (Expression, Expression))
-  | Lambda (List Name) Expression
+  | Lambda (List Parameter) Expression
   | Application Expression Expression
   | BinOp Expression Expression Expression
 
@@ -144,7 +144,7 @@ lambda : OpTable -> Parser s Expression
 lambda ops =
   lazy <| \() ->
     Lambda
-      <$> (symbol "\\" *> many (between_ spaces loName))
+      <$> (symbol "\\" *> many (between_ spaces functionParameter))
       <*> (symbol "->" *> expression ops)
 
 {- Parse function application.
