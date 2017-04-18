@@ -115,14 +115,14 @@ letExpression : OpTable -> Parser s Expression
 letExpression ops =
     lazy <| \() ->
       Let
-        <$> (symbol "let" *> many1 (
+        <$> (symbol "let" *> (many <| between_ whitespace (
                 choice
                     [ FunctionBinding <$> functionDeclaration ops
                     , DestructuringBinding
                         <$> (functionParameter ops)
                         <*> (symbol "=" *> expression ops)
                     ]
-            ))
+            )))
         <*> (symbol "in" *> expression ops)
 
 
