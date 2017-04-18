@@ -44,6 +44,7 @@ type Expression
   | Integer Int
   | Float Float
   | Variable (List Name)
+  | OperatorReference String
   | List (List Expression)
   | Access Expression (List Name)
   | Record (List (Name, Expression))
@@ -194,6 +195,7 @@ term ops =
     , integer
     , access
     , variable
+    , OperatorReference <$> operatorReference
     , list ops
     , record ops
     , parens (expression ops)
