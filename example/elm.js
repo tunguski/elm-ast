@@ -12042,6 +12042,19 @@ var _tunguski$elm_ast$Ast_Expression$findAssoc = F3(
 			}
 		}
 	});
+var _tunguski$elm_ast$Ast_Expression$fqnAdt = _Bogdanp$elm_combine$Combine$choice(
+	{
+		ctor: '::',
+		_0: A2(
+			_Bogdanp$elm_combine$Combine$sepBy1,
+			_Bogdanp$elm_combine$Combine$string('.'),
+			_tunguski$elm_ast$Ast_Helpers$upName),
+		_1: {
+			ctor: '::',
+			_0: A2(_Bogdanp$elm_combine$Combine_ops['<$>'], _elm_lang$core$List$singleton, _tunguski$elm_ast$Ast_Helpers$upName),
+			_1: {ctor: '[]'}
+		}
+	});
 var _tunguski$elm_ast$Ast_Expression$Stop = function (a) {
 	return {ctor: 'Stop', _0: a};
 };
@@ -12091,6 +12104,9 @@ var _tunguski$elm_ast$Ast_Expression$OperatorReference = function (a) {
 };
 var _tunguski$elm_ast$Ast_Expression$TupleExpr = function (a) {
 	return {ctor: 'TupleExpr', _0: a};
+};
+var _tunguski$elm_ast$Ast_Expression$FqnAdt = function (a) {
+	return {ctor: 'FqnAdt', _0: a};
 };
 var _tunguski$elm_ast$Ast_Expression$Variable = function (a) {
 	return {ctor: 'Variable', _0: a};
@@ -12538,6 +12554,9 @@ var _tunguski$elm_ast$Ast_Expression$typeTuple = _Bogdanp$elm_combine$Combine$la
 			_Bogdanp$elm_combine$Combine$parens(
 				_tunguski$elm_ast$Ast_Helpers$commaSeparated_(_tunguski$elm_ast$Ast_Expression$type_)));
 	});
+var _tunguski$elm_ast$Ast_Expression$RecordParam = function (a) {
+	return {ctor: 'RecordParam', _0: a};
+};
 var _tunguski$elm_ast$Ast_Expression$TupleParam = function (a) {
 	return {ctor: 'TupleParam', _0: a};
 };
@@ -12559,7 +12578,7 @@ var _tunguski$elm_ast$Ast_Expression$functionParameter = function (ops) {
 						ctor: '::',
 						_0: A2(
 							_Bogdanp$elm_combine$Combine_ops['<*>'],
-							A2(_Bogdanp$elm_combine$Combine_ops['<$>'], _tunguski$elm_ast$Ast_Expression$AdtParam, _tunguski$elm_ast$Ast_Helpers$upName),
+							A2(_Bogdanp$elm_combine$Combine_ops['<$>'], _tunguski$elm_ast$Ast_Expression$AdtParam, _tunguski$elm_ast$Ast_Expression$fqnAdt),
 							_Bogdanp$elm_combine$Combine$many(
 								A2(
 									_tunguski$elm_ast$Ast_Helpers$between_,
@@ -12573,7 +12592,16 @@ var _tunguski$elm_ast$Ast_Expression$functionParameter = function (ops) {
 								_Bogdanp$elm_combine$Combine$parens(
 									_tunguski$elm_ast$Ast_Helpers$commaSeparated(
 										_tunguski$elm_ast$Ast_Expression$functionParameter(ops)))),
-							_1: {ctor: '[]'}
+							_1: {
+								ctor: '::',
+								_0: A2(
+									_Bogdanp$elm_combine$Combine_ops['<$>'],
+									_tunguski$elm_ast$Ast_Expression$RecordParam,
+									_Bogdanp$elm_combine$Combine$braces(
+										_tunguski$elm_ast$Ast_Helpers$commaSeparated(
+											A2(_Bogdanp$elm_combine$Combine_ops['<$>'], _tunguski$elm_ast$Ast_Expression$RefParam, _tunguski$elm_ast$Ast_Helpers$loName)))),
+								_1: {ctor: '[]'}
+							}
 						}
 					}
 				});
@@ -13101,8 +13129,8 @@ var _tunguski$elm_ast$Ast_Expression$opTable = function (ops) {
 				return _elm_lang$core$Native_Utils.crashCase(
 					'Ast.Expression',
 					{
-						start: {line: 658, column: 7},
-						end: {line: 663, column: 35}
+						start: {line: 665, column: 7},
+						end: {line: 670, column: 35}
 					},
 					_p55)('impossible');
 			}
