@@ -340,7 +340,7 @@ type Parameter
     = RefParam String
     | AdtParam String (List Parameter)
     | TupleParam (List Parameter)
---    | RecordParam (List Parameter)
+    | RecordParam (List Parameter)
 --    | NamedRecordParam (List Parameter) String
 
 
@@ -572,7 +572,7 @@ functionParameter ops =
             [ RefParam <$> loName
             , AdtParam <$> upName <*> (many (between_ whitespace (functionParameter ops)))
             , TupleParam <$> (parens <| commaSeparated (functionParameter ops))
-            --, recordFields
+            , RecordParam <$> (braces <| commaSeparated (RefParam <$> loName))
             --, namedRecordFields
             ]
     )
