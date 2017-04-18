@@ -21,7 +21,7 @@ reserved = [ "module", "where"
 
 
 reservedOperators : List Name
-reservedOperators =  [ "=", ".", "..", "->", "--", "|", ":" ]
+reservedOperators =  [ "=", ".", "..", "->", "--", "|", ":", "," ]
 
 
 between_ : Parser s a -> Parser s res -> Parser s res
