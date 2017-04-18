@@ -55,9 +55,10 @@ moduleDeclaration =
                                      , FunctionExport "c"
                                      ])
 
-    , test "declaration using a port" <|
-        \() -> "port module A exposing (A(..))"
-             |> is (PortModuleDeclaration ["A"]
+    , test "declaration using a effect" <|
+        \() -> "effect module A where { x = Sub } exposing (A(..))"
+             |> is (EffectsModuleDeclaration ["A"]
+                    (Record [ ("x", Variable [ "Sub" ] )])
                     <| SubsetExport [ TypeExport "A" (Just AllExport) ])
 
     ]
