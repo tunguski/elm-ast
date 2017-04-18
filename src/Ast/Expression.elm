@@ -44,6 +44,7 @@ type Expression
   | Integer Int
   | Float Float
   | Variable (List Name)
+  | TupleExpr (List Expression)
   | OperatorReference String
   | List (List Expression)
   | Access Expression (List Name)
@@ -103,6 +104,13 @@ record ops =
     Record <$> braces (commaSeparated_ ((,) <$> loName <*> (symbol "=" *> expression ops)))
 
 
+tuple : OpTable -> Parser s Expression
+tuple ops =
+    lazy (\_ ->
+        TupleExpr <$> (parens <| commaSeparated (expression ops))
+    )
+
+
 letExpression : OpTable -> Parser s Expression
 letExpression ops =
     lazy <| \() ->
@@ -111,7 +119,7 @@ letExpression ops =
                 choice
                     [ FunctionBinding <$> functionDeclaration ops
                     , DestructuringBinding
-                        <$> functionParameter
+                        <$> (functionParameter ops)
                         <*> (symbol "=" *> expression ops)
                     ]
             ))
@@ -144,7 +152,7 @@ lambda : OpTable -> Parser s Expression
 lambda ops =
   lazy <| \() ->
     Lambda
-      <$> (symbol "\\" *> many (between_ spaces functionParameter))
+      <$> (symbol "\\" *> many (between_ spaces (functionParameter ops)))
       <*> (symbol "->" *> expression ops)
 
 {- Parse function application.
@@ -199,6 +207,7 @@ term ops =
     , list ops
     , record ops
     , parens (expression ops)
+    , tuple ops
     , parens (many <| Combine.string ",") |> map (\i ->
         let
             x = Debug.log "i" i
@@ -552,17 +561,17 @@ functionDeclaration : OpTable -> Parser s Function
 functionDeclaration ops =
   Function
     <$> functionOrOperator
-    <*> (many (between_ whitespace functionParameter))
+    <*> (many (between_ whitespace (functionParameter ops)))
     <*> (symbol "=" *> whitespace *> expression ops)
 
 
-functionParameter : Parser s Parameter
-functionParameter =
+functionParameter : OpTable -> Parser s Parameter
+functionParameter ops =
     lazy (\_ ->
         choice
             [ RefParam <$> loName
-            , AdtParam <$> upName <*> (many (between_ whitespace functionParameter))
-            , TupleParam <$> (parens <| commaSeparated functionParameter )
+            , AdtParam <$> upName <*> (many (between_ whitespace (functionParameter ops)))
+            , TupleParam <$> (parens <| commaSeparated (functionParameter ops))
             --, recordFields
             --, namedRecordFields
             ]
