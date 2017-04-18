@@ -44,6 +44,7 @@ type Expression
   | Integer Int
   | Float Float
   | Variable (List Name)
+  | FqnAdt (List Name)
   | TupleExpr (List Expression)
   | OperatorReference String
   | List (List Expression)
@@ -91,6 +92,12 @@ variable =
   Variable <$> choice [ singleton <$> loName
                       , sepBy1 (Combine.string "." ) upName
                       ]
+
+fqnAdt : Parser s (List String)
+fqnAdt =
+  choice [ sepBy1 (Combine.string "." ) upName
+         , singleton <$> upName
+         ]
 
 list : OpTable -> Parser s Expression
 list ops =
@@ -338,9 +345,9 @@ type Type
 {-| Representation for Elm's functions' parameter structure -}
 type Parameter
     = RefParam String
-    | AdtParam String (List Parameter)
+    | AdtParam (List String) (List Parameter)
     | TupleParam (List Parameter)
---    | RecordParam (List Parameter)
+    | RecordParam (List Parameter)
 --    | NamedRecordParam (List Parameter) String
 
 
@@ -570,9 +577,9 @@ functionParameter ops =
     lazy (\_ ->
         choice
             [ RefParam <$> loName
-            , AdtParam <$> upName <*> (many (between_ whitespace (functionParameter ops)))
+            , AdtParam <$> fqnAdt <*> (many (between_ whitespace (functionParameter ops)))
             , TupleParam <$> (parens <| commaSeparated (functionParameter ops))
-            --, recordFields
+            , RecordParam <$> (braces <| commaSeparated (RefParam <$> loName))
             --, namedRecordFields
             ]
     )
