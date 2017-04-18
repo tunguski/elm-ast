@@ -349,7 +349,7 @@ type LetBinding
 {-| Representations for Elm's statements. -}
 type Statement
   = ModuleDeclaration ModuleName ExportSet
-  | PortModuleDeclaration ModuleName ExportSet
+  | EffectsModuleDeclaration ModuleName Expression ExportSet
   | ImportStatement ModuleName (Maybe Alias) (Maybe ExportSet)
   | TypeAliasDeclaration Type Type
   | TypeDeclaration Type (List Type)
@@ -481,10 +481,11 @@ typeAnnotation =
 
 -- Modules
 -- -------
-portModuleDeclaration : Parser s Statement
-portModuleDeclaration =
-  PortModuleDeclaration
-    <$> (initialSymbol "port" *> symbol "module" *> moduleName)
+effectsModuleDeclaration : Parser s Statement
+effectsModuleDeclaration =
+  EffectsModuleDeclaration
+    <$> (initialSymbol "effect" *> symbol "module" *> moduleName)
+    <*> (symbol "where" *> record operators)
     <*> (symbol "exposing" *> exports)
 
 moduleDeclaration : Parser s Statement
@@ -605,7 +606,7 @@ comment =
 {-| A parser for stand-alone Elm statements. -}
 statement : OpTable -> Parser s Statement
 statement ops =
-  choice [ portModuleDeclaration
+  choice [ effectsModuleDeclaration
          , moduleDeclaration
          , importStatement
          , typeAliasDeclaration
