@@ -116,7 +116,7 @@ recordUpdate ops =
   lazy <| \() ->
      braces (
         RecordUpdate
-            <$> loName
+            <$> (wsAndComments *> loName)
             <*> (symbol "|" *> commaSeparated_ ((,) <$> loName <*> (symbol "=" *> expression ops)))
     )
 
