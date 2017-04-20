@@ -132,7 +132,7 @@ letExpression : OpTable -> Parser s Expression
 letExpression ops =
     lazy <| \() ->
       Let
-        <$> (symbol "let" *> (many <| between_ whitespace (
+        <$> (symbol "let" *> (many <| between_ wsAndComments (
                 choice
                     [ FunctionBinding <$> functionDeclaration ops
                     , DestructuringBinding
@@ -157,7 +157,7 @@ caseExpression ops =
     binding =
       lazy <| \() ->
         (,)
-          <$> (whitespace *> expression ops)
+          <$> (wsAndComments *> expression ops)
           <*> (symbol "->" *> expression ops)
   in
     lazy <| \() ->
@@ -181,13 +181,13 @@ application ops =
   lazy <| \() ->
     withLocation (\location ->
         term ops |> chainl (Application <$
-            ( lookAhead (whitespace *>
+            ( lookAhead (wsAndComments *>
                 (primitive (\state inputStream ->
                     (state, inputStream, Ok (location.column < (currentLocation inputStream).column))
                 )))
                 |> andThen (\isIndented ->
                     case isIndented of
-                        True -> whitespace
+                        True -> wsAndComments
                         False -> spaces_
                 )
             )
@@ -199,7 +199,7 @@ binary ops =
   lazy <| \() ->
     let
       next =
-        between_ whitespace operator |> andThen (\op ->
+        between_ wsAndComments operator |> andThen (\op ->
           choice [ Cont <$> application ops, Stop <$> expression ops ] |> andThen (\e ->
             case e of
               Cont t -> ((::) (op, t)) <$> collect
@@ -227,9 +227,6 @@ term ops =
     , parens (expression ops)
     , tuple ops
     , parens (many <| Combine.string ",") |> map (\i ->
-        let
-            x = Debug.log "i" i
-        in
             String <| "createTuple" ++ (toString <| List.length i)
         )
     ]
@@ -538,13 +535,13 @@ typeAliasDeclaration : Parser s Statement
 typeAliasDeclaration =
   TypeAliasDeclaration
     <$> (initialSymbol "type" *> symbol "alias" *> type_)
-    <*> (whitespace *> symbol "=" *> typeAnnotation)
+    <*> (wsAndComments *> symbol "=" *> typeAnnotation)
 
 typeDeclaration : Parser s Statement
 typeDeclaration =
   TypeDeclaration
     <$> (initialSymbol "type" *> type_)
-    <*> (whitespace *> symbol "=" *> (sepBy1 (symbol "|") (between_ whitespace typeConstructor)))
+    <*> (wsAndComments *> symbol "=" *> (sepBy1 (symbol "|") (between_ wsAndComments typeConstructor)))
 
 
 -- Ports
@@ -579,8 +576,8 @@ functionDeclaration : OpTable -> Parser s Function
 functionDeclaration ops =
   Function
     <$> functionOrOperator
-    <*> (many (between_ whitespace (functionParameter ops)))
-    <*> (symbol "=" *> whitespace *> expression ops)
+    <*> (many (between_ wsAndComments (functionParameter ops)))
+    <*> (symbol "=" *> wsAndComments *> expression ops)
 
 
 functionParameter : OpTable -> Parser s Parameter
@@ -588,7 +585,7 @@ functionParameter ops =
     lazy (\_ ->
         choice
             [ RefParam <$> loName
-            , AdtParam <$> fqnAdt <*> (many (between_ whitespace (functionParameter ops)))
+            , AdtParam <$> fqnAdt <*> (many (between_ wsAndComments (functionParameter ops)))
             , TupleParam <$> (parens <| commaSeparated (functionParameter ops))
             , RecordParam <$> (braces <| commaSeparated (RefParam <$> loName))
             --, namedRecordFields
@@ -615,19 +612,9 @@ infixDeclaration =
 -- --------
 
 
-singleLineComment : Parser s Statement
-singleLineComment =
-  Comment <$> (Combine.string "--" *> regex ".*" <* whitespace)
-
-
-multiLineComment : Parser s Statement
-multiLineComment =
-  (Comment << String.fromList) <$> (Combine.string "{-" *> manyTill anyChar (Combine.string "-}"))
-
-
 comment : Parser s Statement
 comment =
-  singleLineComment <|> multiLineComment
+    Comment <$> comments
 
 
 {-| A parser for stand-alone Elm statements. -}
@@ -650,7 +637,7 @@ statement ops =
 {-| A parser for a series of Elm statements. -}
 statements : OpTable -> Parser s (List Statement)
 statements ops =
-  manyTill (whitespace *> statement ops <* whitespace) end
+  manyTill (wsAndComments *> statement ops <* wsAndComments) end
 
 
 {-| A scanner for infix statements. This is useful for performing a
@@ -662,7 +649,7 @@ infixStatements =
     statements =
       many ( choice [ Just    <$> infixDeclaration
                     , Nothing <$  regex ".*"
-                    ] <* whitespace ) <* end
+                    ] <* wsAndComments ) <* end
   in
     statements |> andThen (\xs ->
       succeed <| List.filterMap identity xs)

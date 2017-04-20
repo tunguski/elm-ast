@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Ast
 import Ast.Expression exposing (..)
+import Ast.Helpers
 import Html exposing (..)
 import Html
 import Html.Attributes exposing (..)
