@@ -183,7 +183,7 @@ application ops =
         term ops |> chainl (Application <$
             ( lookAhead (wsAndComments *>
                 (primitive (\state inputStream ->
-                    (state, inputStream, Ok (location.column < (currentLocation inputStream).column))
+                    (state, inputStream, Ok (location.column <= (currentLocation inputStream).column))
                 )))
                 |> andThen (\isIndented ->
                     case isIndented of
