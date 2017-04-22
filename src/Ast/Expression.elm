@@ -57,6 +57,7 @@ type Expression
   | Lambda (List Parameter) Expression
   | Application Expression Expression
   | BinOp Expression Expression Expression
+  | NamedExpression Expression Name
 
 character : Parser s Expression
 character =
@@ -109,6 +110,7 @@ record : OpTable -> Parser s Expression
 record ops =
   lazy <| \() ->
     Record <$> braces (commaSeparated_ ((,) <$> loName <*> (symbol "=" *> expression ops)))
+    >>= namedExpression
 
 
 recordUpdate : OpTable -> Parser s Expression
@@ -119,6 +121,7 @@ recordUpdate ops =
             <$> (wsAndComments *> loName)
             <*> (symbol "|" *> commaSeparated_ ((,) <$> loName <*> (symbol "=" *> expression ops)))
     )
+    >>= namedExpression
 
 
 tuple : OpTable -> Parser s Expression
@@ -196,6 +199,16 @@ application ops =
             )
         )
     )
+    >>= namedExpression
+
+
+namedExpression : Expression -> Parser s Expression
+namedExpression expr =
+    choice [ NamedExpression expr
+             <$> (spaces *> symbol "as" *> spaces *> loName)
+           , succeed expr
+           ]
+
 
 
 binary : OpTable -> Parser s Expression
@@ -352,6 +365,7 @@ type Type
   | TypeRecord (List (Name, Type))
   | TypeTuple (List Type)
   | TypeApplication Type Type
+  | NamedType Type Name
 
 
 {-| Representation for Elm's functions' parameter structure -}
@@ -474,16 +488,6 @@ typeRecord =
     braces
       <| TypeRecord <$> typeRecordPairs
 
-typeParameter : Parser s Type
-typeParameter =
-  lazy <| \() ->
-    between_ spaces <| choice [ typeVariable
-                              , typeConstant
-                              , typeRecordConstructor
-                              , typeRecord
-                              , typeTuple
-                              , parens typeAnnotation
-                              ]
 
 typeConstructor : Parser s Type
 typeConstructor =
@@ -496,11 +500,12 @@ typeConstructor =
                     )))
                     |> andThen (\isIndented ->
                         case isIndented of
-                            True -> wsAndComments *> typeParameter
-                            False -> spaces_ *> typeParameter
+                            True -> wsAndComments *> type_
+                            False -> spaces_ *> type_
                     )
                 )
         )
+
 
 type_ : Parser s Type
 type_ =
@@ -513,6 +518,7 @@ type_ =
                               , parens typeAnnotation
                               ]
 
+
 typeAnnotation : Parser s Type
 typeAnnotation =
   lazy <| \() ->
@@ -521,6 +527,8 @@ typeAnnotation =
 
 -- Modules
 -- -------
+
+
 effectsModuleDeclaration : Parser s Statement
 effectsModuleDeclaration =
   EffectsModuleDeclaration
