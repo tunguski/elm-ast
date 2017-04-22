@@ -110,7 +110,7 @@ record : OpTable -> Parser s Expression
 record ops =
   lazy <| \() ->
     Record <$> braces (commaSeparated_ ((,) <$> loName <*> (symbol "=" *> expression ops)))
-    >>= namedExpression
+    >>= named NamedExpression
 
 
 recordUpdate : OpTable -> Parser s Expression
@@ -121,7 +121,7 @@ recordUpdate ops =
             <$> (wsAndComments *> loName)
             <*> (symbol "|" *> commaSeparated_ ((,) <$> loName <*> (symbol "=" *> expression ops)))
     )
-    >>= namedExpression
+    >>= named NamedExpression
 
 
 tuple : OpTable -> Parser s Expression
@@ -199,12 +199,12 @@ application ops =
             )
         )
     )
-    >>= namedExpression
+    >>= named NamedExpression
 
 
-namedExpression : Expression -> Parser s Expression
-namedExpression expr =
-    choice [ NamedExpression expr
+named : (a -> Name -> a) -> a -> Parser s a
+named value expr =
+    choice [ value expr
              <$> (spaces *> symbol "as" *> spaces *> loName)
            , succeed expr
            ]
@@ -374,7 +374,7 @@ type Parameter
     | AdtParam (List String) (List Parameter)
     | TupleParam (List Parameter)
     | RecordParam (List Parameter)
---    | NamedRecordParam (List Parameter) String
+    | NamedParam Parameter Name
 
 
 {-| Function declaration type -}
@@ -612,8 +612,8 @@ functionParameter ops =
             , AdtParam <$> fqnAdt <*> (many (between_ wsAndComments (functionParameter ops)))
             , TupleParam <$> (parens <| commaSeparated (functionParameter ops))
             , RecordParam <$> (braces <| commaSeparated (RefParam <$> loName))
-            --, namedRecordFields
             ]
+        >>= named NamedParam
     )
 
 
