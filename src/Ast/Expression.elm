@@ -15,10 +15,10 @@ module Ast.Expression exposing
 {-| This module exposes parsers for Elm expressions.
 
 # Types
-@docs Expression
+@docs Expression, ExportSet, Type, Statement, Function, LetBinding, Parameter
 
 # Parsers
-@docs expression
+@docs expression, statement, statements, infixStatements, opTable
 
 -}
 
@@ -57,6 +57,7 @@ type Expression
   | Lambda (List Parameter) Expression
   | Application Expression Expression
   | BinOp Expression Expression Expression
+  | NamedExpression Expression Name
 
 character : Parser s Expression
 character =
@@ -109,6 +110,18 @@ record : OpTable -> Parser s Expression
 record ops =
   lazy <| \() ->
     Record <$> braces (commaSeparated_ ((,) <$> loName <*> (symbol "=" *> expression ops)))
+    >>= named NamedExpression
+
+
+recordUpdate : OpTable -> Parser s Expression
+recordUpdate ops =
+  lazy <| \() ->
+     braces (
+        RecordUpdate
+            <$> (wsAndComments *> loName)
+            <*> (symbol "|" *> commaSeparated_ ((,) <$> loName <*> (symbol "=" *> expression ops)))
+    )
+    >>= named NamedExpression
 
 
 tuple : OpTable -> Parser s Expression
@@ -122,7 +135,7 @@ letExpression : OpTable -> Parser s Expression
 letExpression ops =
     lazy <| \() ->
       Let
-        <$> (symbol "let" *> (many <| between_ whitespace (
+        <$> (symbol "let" *> (many <| between_ wsAndComments (
                 choice
                     [ FunctionBinding <$> functionDeclaration ops
                     , DestructuringBinding
@@ -141,13 +154,14 @@ ifExpression ops =
       <*> (symbol "then" *> expression ops)
       <*> (symbol "else" *> expression ops)
 
+
 caseExpression : OpTable -> Parser s Expression
 caseExpression ops =
   let
     binding =
       lazy <| \() ->
         (,)
-          <$> (whitespace *> expression ops)
+          <$> (wsAndComments *> expression ops)
           <*> (symbol "->" *> expression ops)
   in
     lazy <| \() ->
@@ -155,12 +169,14 @@ caseExpression ops =
         <$> (symbol "case" *> expression ops)
         <*> (symbol "of" *> many1 binding)
 
+
 lambda : OpTable -> Parser s Expression
 lambda ops =
   lazy <| \() ->
     Lambda
       <$> (symbol "\\" *> many (between_ spaces (functionParameter ops)))
       <*> (symbol "->" *> expression ops)
+
 
 {- Parse function application.
    Parse function arguments as long as _beginning_ of next expression
@@ -171,25 +187,36 @@ application ops =
   lazy <| \() ->
     withLocation (\location ->
         term ops |> chainl (Application <$
-            ( lookAhead (whitespace *>
+            ( lookAhead (wsAndComments *>
                 (primitive (\state inputStream ->
-                    (state, inputStream, Ok (location.column < (currentLocation inputStream).column))
+                    (state, inputStream, Ok (location.column <= (currentLocation inputStream).column))
                 )))
                 |> andThen (\isIndented ->
                     case isIndented of
-                        True -> whitespace
+                        True -> wsAndComments
                         False -> spaces_
                 )
             )
         )
     )
+    >>= named NamedExpression
+
+
+named : (a -> Name -> a) -> a -> Parser s a
+named value expr =
+    choice [ value expr
+             <$> (spaces *> symbol "as" *> spaces *> loName)
+           , succeed expr
+           ]
+
+
 
 binary : OpTable -> Parser s Expression
 binary ops =
   lazy <| \() ->
     let
       next =
-        between_ whitespace operator |> andThen (\op ->
+        between_ wsAndComments operator |> andThen (\op ->
           choice [ Cont <$> application ops, Stop <$> expression ops ] |> andThen (\e ->
             case e of
               Cont t -> ((::) (op, t)) <$> collect
@@ -213,12 +240,10 @@ term ops =
     , OperatorReference <$> operatorReference
     , list ops
     , record ops
+    , recordUpdate ops
     , parens (expression ops)
     , tuple ops
     , parens (many <| Combine.string ",") |> map (\i ->
-        let
-            x = Debug.log "i" i
-        in
             String <| "createTuple" ++ (toString <| List.length i)
         )
     ]
@@ -340,6 +365,7 @@ type Type
   | TypeRecord (List (Name, Type))
   | TypeTuple (List Type)
   | TypeApplication Type Type
+  | NamedType Type Name
 
 
 {-| Representation for Elm's functions' parameter structure -}
@@ -348,7 +374,7 @@ type Parameter
     | AdtParam (List String) (List Parameter)
     | TupleParam (List Parameter)
     | RecordParam (List Parameter)
---    | NamedRecordParam (List Parameter) String
+    | NamedParam Parameter Name
 
 
 {-| Function declaration type -}
@@ -462,21 +488,24 @@ typeRecord =
     braces
       <| TypeRecord <$> typeRecordPairs
 
-typeParameter : Parser s Type
-typeParameter =
-  lazy <| \() ->
-    between_ spaces <| choice [ typeVariable
-                              , typeConstant
-                              , typeRecordConstructor
-                              , typeRecord
-                              , typeTuple
-                              , parens typeAnnotation
-                              ]
 
 typeConstructor : Parser s Type
 typeConstructor =
-  lazy <| \() ->
-    TypeConstructor <$> sepBy1 (Combine.string ".") upName <*> many typeParameter
+    lazy <| \() ->
+        withLocation (\location ->
+            TypeConstructor <$> sepBy1 (Combine.string ".") upName <*> many
+                ( lookAhead (wsAndComments *>
+                    (primitive (\state inputStream ->
+                        (state, inputStream, Ok (location.column <= (currentLocation inputStream).column))
+                    )))
+                    |> andThen (\isIndented ->
+                        case isIndented of
+                            True -> wsAndComments *> type_
+                            False -> spaces_ *> type_
+                    )
+                )
+        )
+
 
 type_ : Parser s Type
 type_ =
@@ -489,6 +518,7 @@ type_ =
                               , parens typeAnnotation
                               ]
 
+
 typeAnnotation : Parser s Type
 typeAnnotation =
   lazy <| \() ->
@@ -497,6 +527,8 @@ typeAnnotation =
 
 -- Modules
 -- -------
+
+
 effectsModuleDeclaration : Parser s Statement
 effectsModuleDeclaration =
   EffectsModuleDeclaration
@@ -527,13 +559,13 @@ typeAliasDeclaration : Parser s Statement
 typeAliasDeclaration =
   TypeAliasDeclaration
     <$> (initialSymbol "type" *> symbol "alias" *> type_)
-    <*> (whitespace *> symbol "=" *> typeAnnotation)
+    <*> (wsAndComments *> symbol "=" *> typeAnnotation)
 
 typeDeclaration : Parser s Statement
 typeDeclaration =
   TypeDeclaration
     <$> (initialSymbol "type" *> type_)
-    <*> (whitespace *> symbol "=" *> (sepBy1 (symbol "|") (between_ whitespace typeConstructor)))
+    <*> (wsAndComments *> symbol "=" *> (sepBy1 (symbol "|") (between_ wsAndComments typeConstructor)))
 
 
 -- Ports
@@ -568,8 +600,8 @@ functionDeclaration : OpTable -> Parser s Function
 functionDeclaration ops =
   Function
     <$> functionOrOperator
-    <*> (many (between_ whitespace (functionParameter ops)))
-    <*> (symbol "=" *> whitespace *> expression ops)
+    <*> (many (between_ wsAndComments (functionParameter ops)))
+    <*> (symbol "=" *> wsAndComments *> expression ops)
 
 
 functionParameter : OpTable -> Parser s Parameter
@@ -577,11 +609,11 @@ functionParameter ops =
     lazy (\_ ->
         choice
             [ RefParam <$> loName
-            , AdtParam <$> fqnAdt <*> (many (between_ whitespace (functionParameter ops)))
+            , AdtParam <$> fqnAdt <*> (many (between_ wsAndComments (functionParameter ops)))
             , TupleParam <$> (parens <| commaSeparated (functionParameter ops))
             , RecordParam <$> (braces <| commaSeparated (RefParam <$> loName))
-            --, namedRecordFields
             ]
+        >>= named NamedParam
     )
 
 
@@ -604,19 +636,9 @@ infixDeclaration =
 -- --------
 
 
-singleLineComment : Parser s Statement
-singleLineComment =
-  Comment <$> (Combine.string "--" *> regex ".*" <* whitespace)
-
-
-multiLineComment : Parser s Statement
-multiLineComment =
-  (Comment << String.fromList) <$> (Combine.string "{-" *> manyTill anyChar (Combine.string "-}"))
-
-
 comment : Parser s Statement
 comment =
-  singleLineComment <|> multiLineComment
+    Comment <$> comments
 
 
 {-| A parser for stand-alone Elm statements. -}
@@ -639,7 +661,7 @@ statement ops =
 {-| A parser for a series of Elm statements. -}
 statements : OpTable -> Parser s (List Statement)
 statements ops =
-  manyTill (whitespace *> statement ops <* whitespace) end
+  manyTill (wsAndComments *> statement ops <* wsAndComments) end
 
 
 {-| A scanner for infix statements. This is useful for performing a
@@ -651,7 +673,7 @@ infixStatements =
     statements =
       many ( choice [ Just    <$> infixDeclaration
                     , Nothing <$  regex ".*"
-                    ] <* whitespace ) <* end
+                    ] <* wsAndComments ) <* end
   in
     statements |> andThen (\xs ->
       succeed <| List.filterMap identity xs)

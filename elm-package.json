@@ -1,5 +1,5 @@
 {
-    "version": "1.0.0",
+    "version": "2.0.0",
     "summary": "A parser for Elm code",
     "repository": "https://github.com/tunguski/elm-ast.git",
     "license": "BSD3",
@@ -10,8 +10,7 @@
     "exposed-modules": [
         "Ast",
         "Ast.BinOp",
-        "Ast.Expression",
-        "Ast.Statement"
+        "Ast.Expression"
     ],
     "dependencies": {
         "Bogdanp/elm-combine": "3.1.1 <= v < 4.0.0",

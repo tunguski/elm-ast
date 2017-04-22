@@ -28,17 +28,49 @@ between_ : Parser s a -> Parser s res -> Parser s res
 between_ p = between p p
 
 
+singleLineComment : Parser s String
+singleLineComment =
+  lazy <| \() ->
+    Combine.string "--" *> regex "[^\n]*" <* (string "\n" <|> (Combine.end *> succeed "end"))
+
+
+multiLineComment : Parser s String
+multiLineComment =
+  lazy <| \() ->
+    String.fromList <$> (Combine.string "{-" *> manyTill anyChar (Combine.string "-}"))
+
+
+comments : Parser s String
+comments =
+  lazy <| \() ->
+    singleLineComment <|> multiLineComment
+
+
+andComments : Parser s String -> Parser s String
+andComments parser =
+  lazy <| (\() ->
+    String.concat
+    <$> (many1 (choice [ comments, parser ])))
+
+
 spaces : Parser s String
-spaces = regex "[ \t]*"
+spaces =
+    andComments (regex "[ \t]*")
 
 
 spaces_ : Parser s String
-spaces_ = regex "[ \t]+"
+spaces_ =
+    andComments (regex "[ \t]+")
+
+
+wsAndComments : Parser s String
+wsAndComments =
+    andComments whitespace
 
 
 symbol : String -> Parser s String
 symbol k =
-  between_ whitespace (string k)
+  between_ wsAndComments (string k)
 
 
 initialSymbol : String -> Parser s String
@@ -48,12 +80,12 @@ initialSymbol k =
 
 commaSeparated : Parser s res -> Parser s (List res)
 commaSeparated p =
-  sepBy1 (string ",") (between_ whitespace p)
+  sepBy1 (string ",") (between_ wsAndComments p)
 
 
 commaSeparated_ : Parser s res -> Parser s (List res)
 commaSeparated_ p =
-  sepBy (string ",") (between_ whitespace p)
+  sepBy (string ",") (between_ wsAndComments p)
 
 
 name : Parser s Char -> Parser s String
