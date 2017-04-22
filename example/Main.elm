@@ -11,6 +11,10 @@ import Http exposing (..)
 import Json.Decode as JD
 import Platform.Sub
 
+import Bootstrap.CDN as CDN
+import Bootstrap.Grid as Grid
+import Bootstrap.Grid.Col as Col
+
 import Combine exposing (ParseResult)
 
 
@@ -181,57 +185,60 @@ countItems value model =
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ h1 []
-            [ text "All items: "
-            , text <| toString <| List.length model
-            , text " Success count: "
-            , text <| toString <| countItems True model
-            , text " Failure count: "
-            , text <| toString <| countItems False model
-            ]
-        , table
-            [ style [ ( "width",  "100%" ) ]
-            ]
-            [ tbody []
-                (List.map (\(name, txt, ast) ->
-                    tr
-                        [ style [ ( "width",  "100%" ) ]
-                        ]
-                        [ td
-                            [ style
-                                [ ( "width",  "30%" )
-                                , ( "position", "relative" )
-                                ]
-                            ]
-                            [ textarea
-                                [ on "input" (JD.map (Replace name) targetValue)
-                                , style
-                                    [ ( "width", "100%" )
-                                    , ( "padding", "0" )
-                                    , ( "position", "absolute" )
-                                    , ( "top", "0" )
-                                    , ( "bottom", "0" )
-                                    , ( "left", "0" )
-                                    , ( "right", "0" )
-                                    ]
-                                ]
-                                [ text txt ]
-                            ]
-                        , td
-                            [ style [ ( "width",  "70%" )
-                                    , ( "vertical-align", "top" )
-                                    , ( "background-color" ,
-                                        case ast of
-                                            Ok _ -> "green"
-                                            _ -> "red" )
-                                    ]
-                            ]
-                            [ tree (name, txt, ast) ]
-                        ]
-                ) model)
+    Grid.containerFluid [] <|
+        [ CDN.stylesheet
+        --, navbar model
+        ]
+        ++
+        mainContent model
+
+
+mainContent model =
+    [ Grid.simpleRow
+        [ Grid.col
+            [ Col.xs12 ]
+            [ h1 []
+                [ text "All items: "
+                , text <| toString <| List.length model
+                , text " Success count: "
+                , text <| toString <| countItems True model
+                , text " Failure count: "
+                , text <| toString <| countItems False model
+                ]
             ]
         ]
+    ]
+    ++
+    (List.map (\(name, txt, ast) ->
+        Grid.simpleRow
+            [ Grid.col
+                [ Col.xs4 ]
+                [ textarea
+                    [ on "input" (JD.map (Replace name) targetValue)
+                    , style
+                        [ ( "width", "100%" )
+                        , ( "padding", "0" )
+                        , ( "position", "absolute" )
+                        , ( "top", "0" )
+                        , ( "bottom", "0" )
+                        , ( "left", "0" )
+                        , ( "right", "0" )
+                        ]
+                    ]
+                    [ text txt ]
+                ]
+            , Grid.col
+                ((Col.attrs <| List.singleton <| class <|
+                    case ast of
+                        Ok _ -> "card-success"
+                        _ -> "card-danger"
+                )
+                ::
+                [ Col.xs8
+                ])
+                [ tree (name, txt, ast) ]
+            ]
+    ) model)
 
 
 main : Program Never Model Msg
