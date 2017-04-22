@@ -15,10 +15,10 @@ module Ast.Expression exposing
 {-| This module exposes parsers for Elm expressions.
 
 # Types
-@docs Expression
+@docs Expression, ExportSet, Type, Statement, Function, LetBinding, Parameter
 
 # Parsers
-@docs expression
+@docs expression, statement, statements, infixStatements, opTable
 
 -}
 
