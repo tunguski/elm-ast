@@ -151,6 +151,7 @@ ifExpression ops =
       <*> (symbol "then" *> expression ops)
       <*> (symbol "else" *> expression ops)
 
+
 caseExpression : OpTable -> Parser s Expression
 caseExpression ops =
   let
@@ -165,12 +166,14 @@ caseExpression ops =
         <$> (symbol "case" *> expression ops)
         <*> (symbol "of" *> many1 binding)
 
+
 lambda : OpTable -> Parser s Expression
 lambda ops =
   lazy <| \() ->
     Lambda
       <$> (symbol "\\" *> many (between_ spaces (functionParameter ops)))
       <*> (symbol "->" *> expression ops)
+
 
 {- Parse function application.
    Parse function arguments as long as _beginning_ of next expression
@@ -193,6 +196,7 @@ application ops =
             )
         )
     )
+
 
 binary : OpTable -> Parser s Expression
 binary ops =
@@ -483,8 +487,20 @@ typeParameter =
 
 typeConstructor : Parser s Type
 typeConstructor =
-  lazy <| \() ->
-    TypeConstructor <$> sepBy1 (Combine.string ".") upName <*> many typeParameter
+    lazy <| \() ->
+        withLocation (\location ->
+            TypeConstructor <$> sepBy1 (Combine.string ".") upName <*> many
+                ( lookAhead (wsAndComments *>
+                    (primitive (\state inputStream ->
+                        (state, inputStream, Ok (location.column <= (currentLocation inputStream).column))
+                    )))
+                    |> andThen (\isIndented ->
+                        case isIndented of
+                            True -> wsAndComments *> typeParameter
+                            False -> spaces_ *> typeParameter
+                    )
+                )
+        )
 
 type_ : Parser s Type
 type_ =
