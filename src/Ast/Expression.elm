@@ -127,7 +127,7 @@ recordUpdate ops =
 tuple : OpTable -> Parser s Expression
 tuple ops =
     lazy (\_ ->
-        TupleExpr <$> (parens <| commaSeparated (expression ops))
+        TupleExpr <$> (parens <| commaSeparated_ (expression ops))
     )
 
 
@@ -610,7 +610,7 @@ functionParameter ops =
         choice
             [ RefParam <$> loName
             , AdtParam <$> fqnAdt <*> (many (between_ wsAndComments (functionParameter ops)))
-            , TupleParam <$> (parens <| commaSeparated (functionParameter ops))
+            , TupleParam <$> (parens <| commaSeparated_ (functionParameter ops))
             , RecordParam <$> (braces <| commaSeparated (RefParam <$> loName))
             ]
         >>= named NamedParam
