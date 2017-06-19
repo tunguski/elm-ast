@@ -173,9 +173,19 @@ caseExpression ops =
           <*> (symbol "->" *> expression ops)
   in
     lazy <| \() ->
-      Case
-        <$> (symbol "case" *> expression ops)
-        <*> (symbol "of" *> many1 binding)
+        withLocation (\location ->
+            Case <$> (symbol "case" *> expression ops) <* symbol "of" <*> many
+                ( lookAhead (wsAndComments *>
+                    (primitive (\state inputStream ->
+                        (state, inputStream, Ok (location.column <= (currentLocation inputStream).column))
+                    )))
+                    |> andThen (\isIndented ->
+                        case isIndented of
+                            True -> wsAndComments *> binding
+                            False -> spaces_ *> binding
+                    )
+                )
+        )
 
 
 lambda : OpTable -> Parser s Expression
