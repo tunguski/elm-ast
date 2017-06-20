@@ -59,9 +59,11 @@ type Expression
   | BinOp Expression Expression Expression
   | NamedExpression Expression Name
 
+
 character : Parser s Expression
 character =
   Character <$> between_ (char '\'') anyChar
+
 
 string : Parser s Expression
 string =
@@ -76,17 +78,31 @@ string =
   in
     multiString <|> singleString
 
+
 integer : Parser s Expression
 integer =
   Integer <$> Combine.Num.int
+
 
 float : Parser s Expression
 float =
   Float <$> Combine.Num.float
 
+
 access : Parser s Expression
 access =
   Access <$> variable <*> many1 (Combine.string "." *> loName)
+
+
+accessFunction : Parser s Expression
+accessFunction =
+    (Combine.string "." *> loName)
+    |> andThen (\name ->
+        Lambda [ RefParam name ]
+            (Access (Variable [ name ]) [ name ])
+        |> succeed
+    )
+
 
 variable : Parser s Expression
 variable =
@@ -222,11 +238,11 @@ application ops =
 
 named : (a -> Name -> a) -> a -> Parser s a
 named value expr =
-    choice [ value expr
-             <$> (spaces *> symbol "as" *> spaces *> loName)
-           , succeed expr
-           ]
-
+    succeed expr
+    --choice [ value expr
+    --         <$> (spaces *> symbol "as" *> spaces *> loName)
+    --       , succeed expr
+    --       ]
 
 
 binary : OpTable -> Parser s Expression
@@ -254,6 +270,7 @@ term ops =
     , float
     , integer
     , access
+    , accessFunction
     , variable
     , OperatorReference <$> operatorReference
     , list ops
