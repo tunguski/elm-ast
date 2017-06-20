@@ -98,8 +98,8 @@ accessFunction : Parser s Expression
 accessFunction =
     (Combine.string "." *> loName)
     |> andThen (\name ->
-        Lambda [ RefParam name ]
-            (Access (Variable [ name ]) [ name ])
+        Lambda [ RefParam "accessedRecord" ]
+            (Access (Variable [ "accessedRecord" ]) [ name ])
         |> succeed
     )
 
