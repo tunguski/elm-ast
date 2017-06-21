@@ -19,12 +19,22 @@ import Combine exposing (ParseResult)
 
 
 type Msg
-    = Replace String String
-    | Loaded String (Result Error String)
+    = Replace String String String
+    | Loaded String String (Result Error String)
 
 
-type alias Item = (String, String, Result (Combine.ParseErr ()) (Combine.ParseOk () (List Statement)))
-type alias Model = List Item
+type alias Item =
+    { moduleName : String
+    , text : Maybe String
+    , parsed : Maybe (Result
+                (Combine.ParseErr ())
+                (Combine.ParseOk () (List Statement)))
+    }
+type alias Package =
+    { package : String
+    , items : List Item
+    }
+type alias Model = List Package
 
 
 testFiles =
@@ -58,17 +68,34 @@ testFiles =
         [ "Http"
         , "Http/Progress"
         ])
+    , ("Bogdanp/elm-combine/3.1.1/src/",
+        [ "Combine"
+        , "Combine/Char"
+        ])
+    , ("elm-lang/html/2.0.0/src/",
+        [ "Html"
+        , "Html/Attributes"
+        ])
     ]
 
 
 init : (Model, Cmd Msg)
 init =
-    [ ( "custom", sampleModule, Ast.parse sampleModule )
-    ]
+    (Package "n/a" [ Item "Custom Editor"
+        (Just sampleModule)
+        (Just <| Ast.parse sampleModule) ]
+    ::
+    List.map (\(pkg, items) ->
+        Package pkg <|
+            List.map (\moduleName ->
+                Item moduleName Nothing Nothing
+            ) items
+    ) testFiles
+    )
     !
     ((List.concatMap (\(package, files) ->
         List.map (\file ->
-            send (Loaded (package ++ " - " ++ file))
+            send (Loaded package file)
                 (getString <| "https://raw.githubusercontent.com/" ++ package ++ file ++ ".elm")
         ) files
     )) testFiles
@@ -106,16 +133,39 @@ withChild title children =
 update : Msg -> Model -> (Model, Cmd Msg)
 update action model =
     case action of
-        Replace name m ->
-            List.map (\(elementName, str, ast) ->
-                case elementName == name of
-                    True -> (elementName, m, Ast.parse m)
-                    False -> (elementName, str, ast)
-            ) model ! []
-        Loaded name result ->
+        Replace pkg name m ->
+            List.map (\package ->
+                if package.package == pkg then
+                    { package | items = List.map (\item ->
+                        if item.moduleName == name then
+                            { item
+                            | text = Just m
+                            , parsed = Just (Ast.parse m)
+                            }
+                        else
+                            item
+                    ) package.items }
+                else
+                    package
+            ) model
+            ! []
+        Loaded pkg name result ->
             case result of
                 Ok data ->
-                    (( name, data, Ast.parse data ) :: model)
+                    List.map (\package ->
+                        if package.package == pkg then
+                            { package | items = List.map (\item ->
+                                if item.moduleName == name then
+                                    { item
+                                    | text = Just data
+                                    , parsed = Just (Ast.parse data)
+                                    }
+                                else
+                                    item
+                            ) package.items }
+                        else
+                            package
+                    ) model
                     ! []
                 Err err ->
                     let
@@ -158,8 +208,8 @@ statement s =
             li [] [ text <| toString s ]
 
 
-tree : Item -> Html Msg
-tree (name, moduleText, ast) =
+--tree : Item -> Html Msg
+tree ast =
     case ast of
         ( Ok (_, _, statements)) ->
             ul [] (List.map statement statements)
@@ -174,12 +224,19 @@ tree (name, moduleText, ast) =
                 [ text <| toString err ]
 
 
+countItems : Bool -> Model -> Int
 countItems value model =
-    List.filter (\i ->
-        case i of
-            (_, _, Ok _) -> value
-            _ -> not value
-    ) model
+    model
+    |> List.map .items
+    |> List.concatMap identity
+    |> List.filter (\i ->
+        case i.parsed of
+            Just ast ->
+                case ast of
+                    Ok _ -> value
+                    _ -> not value
+            _ -> False
+    )
     |> List.length
 
 
@@ -199,7 +256,12 @@ mainContent model =
             [ Col.xs12 ]
             [ h1 []
                 [ text "All items: "
-                , text <| toString <| List.length model
+                , text <| toString (
+                    model
+                    |> List.map .items
+                    |> List.concatMap identity
+                    |> List.length
+                    )
                 , text " Success count: "
                 , text <| toString <| countItems True model
                 , text " Failure count: "
@@ -209,36 +271,61 @@ mainContent model =
         ]
     ]
     ++
-    (List.map (\(name, txt, ast) ->
-        Grid.simpleRow
-            [ Grid.col
-                [ Col.xs4 ]
-                [ textarea
-                    [ on "input" (JD.map (Replace name) targetValue)
-                    , style
-                        [ ( "width", "100%" )
-                        , ( "padding", "0" )
-                        , ( "position", "absolute" )
-                        , ( "top", "0" )
-                        , ( "bottom", "0" )
-                        , ( "left", "0" )
-                        , ( "right", "0" )
+    (List.concatMap identity
+        (List.map (\package ->
+            [ Grid.simpleRow
+                [ Grid.col [ Col.xs12 ]
+                    [ h2 [] [ text <| "Package: " ++ package.package ] ]
+                ]
+            ]
+            ++
+            (List.concatMap identity
+                (List.map (\item ->
+                    [ Grid.simpleRow
+                        [ Grid.col [ Col.xs12 ]
+                            [ h2 [] [ text <| "Module: " ++ item.moduleName ] ]
+                        ]
+                    , Grid.simpleRow
+                        [ Grid.col
+                            [ Col.xs4 ]
+                            [ textarea
+                                [ on "input" (JD.map (Replace package.package item.moduleName) targetValue)
+                                , style
+                                    [ ( "width", "100%" )
+                                    , ( "padding", "0" )
+                                    , ( "position", "absolute" )
+                                    , ( "top", "0" )
+                                    , ( "bottom", "0" )
+                                    , ( "left", "0" )
+                                    , ( "right", "0" )
+                                    ]
+                                ]
+                                [ text <| case item.text of
+                                    Just txt -> txt
+                                    _ -> ""
+                                ]
+                            ]
+                        , Grid.col
+                            ((Col.attrs <| List.singleton <| class <|
+                                case item.parsed of
+                                    Just ast ->
+                                        case ast of
+                                            Ok _ -> "card-success"
+                                            _ -> "card-danger"
+                                    _ ->
+                                        ""
+                            )
+                            ::
+                            [ Col.xs8
+                            ])
+                            [ case item.parsed of
+                                Just ast -> tree ast
+                                _ -> text ""
+                            ]
                         ]
                     ]
-                    [ text txt ]
-                ]
-            , Grid.col
-                ((Col.attrs <| List.singleton <| class <|
-                    case ast of
-                        Ok _ -> "card-success"
-                        _ -> "card-danger"
-                )
-                ::
-                [ Col.xs8
-                ])
-                [ tree (name, txt, ast) ]
-            ]
-    ) model)
+                ) package.items))
+        ) model))
 
 
 main : Program Never Model Msg
