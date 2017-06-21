@@ -62,8 +62,36 @@ type Expression
 
 character : Parser s Expression
 character =
-  Character <$> between_ (char '\'') anyChar
+  --Character <$> between_ (char '\'') anyChar
+    Character
+        <$> between_ (Combine.string "'")
+                (((Combine.string "\\" *> regex "(n|t|r|\\\\|x..)")
+                    >>= (\a ->
+                            case a of
+                                "n" ->
+                                    succeed '\n'
 
+                                "t" ->
+                                    succeed '\t'
+
+                                "r" ->
+                                    succeed '\x0D'
+
+                                "\\" ->
+                                    succeed '\\'
+
+                                "0" ->
+                                    succeed '\x00'
+
+                                "x00" ->
+                                    succeed '\x00'
+
+                                a ->
+                                    fail ("No such character as \\" ++ a)
+                        )
+                 )
+                    <|> anyChar
+                )
 
 string : Parser s Expression
 string =
@@ -238,11 +266,11 @@ application ops =
 
 named : (a -> Name -> a) -> a -> Parser s a
 named value expr =
-    succeed expr
-    --choice [ value expr
-    --         <$> (spaces *> symbol "as" *> spaces *> loName)
-    --       , succeed expr
-    --       ]
+    --succeed expr
+    choice [ value expr
+             <$> (spaces *> symbol "as" *> spaces *> loName)
+           , succeed expr
+           ]
 
 
 binary : OpTable -> Parser s Expression
