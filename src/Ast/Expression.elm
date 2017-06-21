@@ -59,9 +59,39 @@ type Expression
   | BinOp Expression Expression Expression
   | NamedExpression Expression Name
 
+
 character : Parser s Expression
 character =
-  Character <$> between_ (char '\'') anyChar
+  --Character <$> between_ (char '\'') anyChar
+    Character
+        <$> between_ (Combine.string "'")
+                (((Combine.string "\\" *> regex "(n|t|r|\\\\|x..)")
+                    >>= (\a ->
+                            case a of
+                                "n" ->
+                                    succeed '\n'
+
+                                "t" ->
+                                    succeed '\t'
+
+                                "r" ->
+                                    succeed '\x0D'
+
+                                "\\" ->
+                                    succeed '\\'
+
+                                "0" ->
+                                    succeed '\x00'
+
+                                "x00" ->
+                                    succeed '\x00'
+
+                                a ->
+                                    fail ("No such character as \\" ++ a)
+                        )
+                 )
+                    <|> anyChar
+                )
 
 string : Parser s Expression
 string =
@@ -76,17 +106,31 @@ string =
   in
     multiString <|> singleString
 
+
 integer : Parser s Expression
 integer =
   Integer <$> Combine.Num.int
+
 
 float : Parser s Expression
 float =
   Float <$> Combine.Num.float
 
+
 access : Parser s Expression
 access =
   Access <$> variable <*> many1 (Combine.string "." *> loName)
+
+
+accessFunction : Parser s Expression
+accessFunction =
+    (Combine.string "." *> loName)
+    |> andThen (\name ->
+        Lambda [ RefParam "accessedRecord" ]
+            (Access (Variable [ "accessedRecord" ]) [ name ])
+        |> succeed
+    )
+
 
 variable : Parser s Expression
 variable =
@@ -113,6 +157,14 @@ record ops =
     >>= named NamedExpression
 
 
+
+simplifiedRecord : Parser s Expression
+simplifiedRecord =
+    lazy <|
+        \() ->
+            Record <$> (braces (commaSeparated ((\a -> ( a, Variable [ a ] )) <$> loName)))
+
+
 recordUpdate : OpTable -> Parser s Expression
 recordUpdate ops =
   lazy <| \() ->
@@ -127,7 +179,7 @@ recordUpdate ops =
 tuple : OpTable -> Parser s Expression
 tuple ops =
     lazy (\_ ->
-        TupleExpr <$> (parens <| commaSeparated (expression ops))
+        TupleExpr <$> (parens <| commaSeparated_ (expression ops))
     )
 
 
@@ -165,9 +217,19 @@ caseExpression ops =
           <*> (symbol "->" *> expression ops)
   in
     lazy <| \() ->
-      Case
-        <$> (symbol "case" *> expression ops)
-        <*> (symbol "of" *> many1 binding)
+        withLocation (\location ->
+            Case <$> (symbol "case" *> expression ops) <* symbol "of" <*> many
+                ( lookAhead (wsAndComments *>
+                    (primitive (\state inputStream ->
+                        (state, inputStream, Ok (location.column <= (currentLocation inputStream).column))
+                    )))
+                    |> andThen (\isIndented ->
+                        case isIndented of
+                            True -> wsAndComments *> binding
+                            False -> spaces_ *> binding
+                    )
+                )
+        )
 
 
 lambda : OpTable -> Parser s Expression
@@ -204,11 +266,11 @@ application ops =
 
 named : (a -> Name -> a) -> a -> Parser s a
 named value expr =
+    --succeed expr
     choice [ value expr
-             <$> (spaces *> symbol "as" *> spaces *> loName)
+             <$> (spaces *> Combine.string "as" *> spaces *> loName)
            , succeed expr
            ]
-
 
 
 binary : OpTable -> Parser s Expression
@@ -236,10 +298,12 @@ term ops =
     , float
     , integer
     , access
+    , accessFunction
     , variable
     , OperatorReference <$> operatorReference
     , list ops
     , record ops
+    , simplifiedRecord
     , recordUpdate ops
     , parens (expression ops)
     , tuple ops
@@ -610,7 +674,7 @@ functionParameter ops =
         choice
             [ RefParam <$> loName
             , AdtParam <$> fqnAdt <*> (many (between_ wsAndComments (functionParameter ops)))
-            , TupleParam <$> (parens <| commaSeparated (functionParameter ops))
+            , TupleParam <$> (parens <| commaSeparated_ (functionParameter ops))
             , RecordParam <$> (braces <| commaSeparated (RefParam <$> loName))
             ]
         >>= named NamedParam

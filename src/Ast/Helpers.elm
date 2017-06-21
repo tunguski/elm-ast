@@ -14,7 +14,7 @@ type alias Alias = String
 reserved : List Name
 reserved = [ "module", "where"
            , "import", "as", "exposing"
-           , "type", "alias", "port"
+           , "type", {-"alias",-} "port"
            , "if", "then", "else"
            , "let", "in", "case", "of"
            ]
