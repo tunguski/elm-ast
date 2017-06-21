@@ -268,7 +268,7 @@ named : (a -> Name -> a) -> a -> Parser s a
 named value expr =
     --succeed expr
     choice [ value expr
-             <$> (spaces *> symbol "as" *> spaces *> loName)
+             <$> (spaces *> symbol "as" *> spaces_ *> loName)
            , succeed expr
            ]
 
