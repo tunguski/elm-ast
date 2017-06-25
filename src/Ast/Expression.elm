@@ -674,10 +674,12 @@ functionParameter ops =
         choice
             [ RefParam <$> loName
             , AdtParam <$> fqnAdt <*> (many (between_ wsAndComments (functionParameter ops)))
+                >>= named NamedParam
             , TupleParam <$> (parens <| commaSeparated_ (functionParameter ops))
+                >>= named NamedParam
             , RecordParam <$> (braces <| commaSeparated (RefParam <$> loName))
+                >>= named NamedParam
             ]
-        >>= named NamedParam
     )
 
 
