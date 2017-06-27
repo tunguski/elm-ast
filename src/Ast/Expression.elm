@@ -29,6 +29,7 @@ import Dict exposing (Dict)
 import List exposing (singleton)
 import List.Extra exposing (break)
 import String
+import Regex
 
 import Ast.BinOp exposing (..)
 import Ast.Helpers exposing (..)
@@ -207,6 +208,41 @@ ifExpression ops =
       <*> (symbol "else" *> expression ops)
 
 
+manyWithLookAhead consumer base repetition =
+    lazy <| \() ->
+        withLocation (\location ->
+            let
+                matches =
+                    Regex.find
+                        (Regex.AtMost 1)
+                        (Regex.regex "[|]>|<[|]")
+                        location.source
+                pos =
+                    (case List.head matches of
+                        Just match ->
+                            min location.column match.index
+                        _ ->
+                            location.column
+                    ) - 1
+
+            in
+                consumer <$> base <*> many
+                    ( lookAhead (wsAndComments *>
+                        (primitive (\state inputStream ->
+                            ( state
+                            , inputStream
+                            , Ok (pos <= (currentLocation inputStream).column)
+                            )
+                        )))
+                        |> andThen (\isIndented ->
+                            case isIndented of
+                                True -> wsAndComments *> repetition
+                                False -> spaces_ *> repetition
+                        )
+                    )
+        )
+
+
 caseExpression : OpTable -> Parser s Expression
 caseExpression ops =
   let
@@ -216,20 +252,10 @@ caseExpression ops =
           <$> (wsAndComments *> expression ops)
           <*> (symbol "->" *> expression ops)
   in
-    lazy <| \() ->
-        withLocation (\location ->
-            Case <$> (symbol "case" *> expression ops) <* symbol "of" <*> many
-                ( lookAhead (wsAndComments *>
-                    (primitive (\state inputStream ->
-                        (state, inputStream, Ok (location.column <= (currentLocation inputStream).column))
-                    )))
-                    |> andThen (\isIndented ->
-                        case isIndented of
-                            True -> wsAndComments *> binding
-                            False -> spaces_ *> binding
-                    )
-                )
-        )
+    manyWithLookAhead
+        Case
+        ((symbol "case" *> expression ops) <* symbol "of")
+        binding
 
 
 lambda : OpTable -> Parser s Expression
@@ -246,22 +272,25 @@ lambda ops =
 -}
 application : OpTable -> Parser s Expression
 application ops =
-  lazy <| \() ->
-    withLocation (\location ->
-        term ops |> chainl (Application <$
-            ( lookAhead (wsAndComments *>
-                (primitive (\state inputStream ->
-                    (state, inputStream, Ok (location.column <= (currentLocation inputStream).column))
-                )))
-                |> andThen (\isIndented ->
-                    case isIndented of
-                        True -> wsAndComments
-                        False -> spaces_
-                )
-            )
-        )
+    manyWithLookAhead
+        (,)
+        (term ops)
+        (term ops)
+    |> map (\(baseTerm, baseList) ->
+        case baseList of
+            [] -> baseTerm
+            _ ->
+                let
+                    processApplication expr list =
+                        case list of
+                            [ x ] -> expr x
+                            h :: t ->
+                                expr (processApplication (Application h) t)
+                            _ -> Debug.crash ("Invalid state" ++ (toString (baseTerm, baseList)))
+                in
+                    processApplication (Application baseTerm) baseList
     )
-    >>= named NamedExpression
+    |> andThen (named NamedExpression)
 
 
 named : (a -> Name -> a) -> a -> Parser s a
@@ -556,19 +585,10 @@ typeRecord =
 typeConstructor : Parser s Type
 typeConstructor =
     lazy <| \() ->
-        withLocation (\location ->
-            TypeConstructor <$> sepBy1 (Combine.string ".") upName <*> many
-                ( lookAhead (wsAndComments *>
-                    (primitive (\state inputStream ->
-                        (state, inputStream, Ok (location.column <= (currentLocation inputStream).column))
-                    )))
-                    |> andThen (\isIndented ->
-                        case isIndented of
-                            True -> wsAndComments *> type_
-                            False -> spaces_ *> type_
-                    )
-                )
-        )
+        manyWithLookAhead
+            TypeConstructor
+            (sepBy1 (Combine.string ".") upName)
+            type_
 
 
 type_ : Parser s Type
