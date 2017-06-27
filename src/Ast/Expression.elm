@@ -574,7 +574,9 @@ typeApplication =
 typeTuple : Parser s Type
 typeTuple =
   lazy <| \() ->
-    TypeTuple <$> parens (commaSeparated_ type_)
+    TypeTuple <$> parens (commaSeparated_
+        ( choice [ typeAnnotation, type_ ] )
+    )
 
 typeRecordPair : Parser s (Name, Type)
 typeRecordPair =
