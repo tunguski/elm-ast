@@ -272,25 +272,37 @@ lambda ops =
 -}
 application : OpTable -> Parser s Expression
 application ops =
-    manyWithLookAhead
-        (,)
-        (term ops)
-        (term ops)
-    |> map (\(baseTerm, baseList) ->
-        case baseList of
-            [] -> baseTerm
-            _ ->
-                let
-                    processApplication expr list =
-                        case list of
-                            [ x ] -> expr x
-                            h :: t ->
-                                expr (processApplication (Application h) t)
-                            _ -> Debug.crash ("Invalid state" ++ (toString (baseTerm, baseList)))
-                in
-                    processApplication (Application baseTerm) baseList
-    )
-    |> andThen (named NamedExpression)
+    let
+        defaultApplication =
+            manyWithLookAhead
+                (,)
+                (term ops)
+                (term ops)
+            |> map (\(baseTerm, baseList) ->
+                case baseList of
+                    [] -> baseTerm
+                    _ ->
+                        let
+                            processApplication expr list =
+                                case list of
+                                    [ x ] -> expr x
+                                    h :: t ->
+                                        expr (processApplication (Application h) t)
+                                    _ -> Debug.crash ("Invalid state" ++ (toString (baseTerm, baseList)))
+                        in
+                            processApplication (Application baseTerm) baseList
+            )
+            |> andThen (named NamedExpression)
+
+        minusApplication =
+            Application (Variable [ "-" ])
+                <$> (symbol "-" *> variable)
+
+    in
+        choice
+            [ defaultApplication
+            , minusApplication
+            ]
 
 
 named : (a -> Name -> a) -> a -> Parser s a
