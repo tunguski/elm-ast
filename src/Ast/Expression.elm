@@ -504,6 +504,7 @@ type LetBinding
 type Statement
   = ModuleDeclaration ModuleName ExportSet
   | EffectsModuleDeclaration ModuleName Expression ExportSet
+  | PortModuleDeclaration ModuleName ExportSet
   | ImportStatement ModuleName (Maybe Alias) (Maybe ExportSet)
   | TypeAliasDeclaration Type Type
   | TypeDeclaration Type (List Type)
@@ -641,6 +642,14 @@ effectsModuleDeclaration =
     <*> (symbol "where" *> record operators)
     <*> (symbol "exposing" *> exports)
 
+
+portModuleDeclaration : Parser s Statement
+portModuleDeclaration =
+  PortModuleDeclaration
+    <$> (initialSymbol "port" *> symbol "module" *> moduleName)
+    <*> (symbol "exposing" *> exports)
+
+
 moduleDeclaration : Parser s Statement
 moduleDeclaration =
   ModuleDeclaration
@@ -752,6 +761,7 @@ comment =
 statement : OpTable -> Parser s Statement
 statement ops =
   choice [ effectsModuleDeclaration
+         , portModuleDeclaration
          , moduleDeclaration
          , importStatement
          , typeAliasDeclaration
