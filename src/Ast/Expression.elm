@@ -137,6 +137,12 @@ variable : Parser s Expression
 variable =
   Variable <$> choice [ singleton <$> loName
                       , sepBy1 (Combine.string "." ) upName
+                      , (,)
+                          <$> (upName <* Combine.string ".")
+                          <*> loName
+                          |> map (\(p, v) ->
+                              [ p, v ]
+                          )
                       ]
 
 fqnAdt : Parser s (List String)

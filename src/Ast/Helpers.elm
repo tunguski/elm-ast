@@ -75,7 +75,7 @@ symbol k =
 
 initialSymbol : String -> Parser s String
 initialSymbol k =
-  string k <* spaces
+  string k <* spaces_
 
 
 commaSeparated : Parser s res -> Parser s (List res)
