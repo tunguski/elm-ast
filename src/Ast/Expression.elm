@@ -196,7 +196,8 @@ letExpression ops =
       Let
         <$> (symbol "let" *> (many <| between_ wsAndComments (
                 choice
-                    [ FunctionBinding <$> functionDeclaration ops
+                    [ (maybe functionTypeDeclaration) *> wsAndComments *>
+                        (FunctionBinding <$> functionDeclaration ops)
                     , DestructuringBinding
                         <$> (functionParameter ops)
                         <*> (symbol "=" *> expression ops)
