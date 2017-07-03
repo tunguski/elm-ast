@@ -36,8 +36,21 @@ singleLineComment =
 
 multiLineComment : Parser s String
 multiLineComment =
+    let
+        parseRestOfComment =
+            lazy <| \() ->
+                manyTill anyChar
+                    (choice
+                        [ Combine.string "-}" <* succeed ""
+                        , lookAhead (Combine.string "{-") *>
+                            ((++) <$> multiLineComment <*> parseRestOfComment
+                            )
+                        ]
+                    )
+                >>= (String.fromList >> succeed)
+    in
   lazy <| \() ->
-    String.fromList <$> (Combine.string "{-" *> manyTill anyChar (Combine.string "-}"))
+    Combine.string "{-" *> parseRestOfComment
 
 
 comments : Parser s String
