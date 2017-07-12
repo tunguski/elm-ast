@@ -294,7 +294,8 @@ application ops =
                                 case list of
                                     [ x ] -> expr x
                                     h :: t ->
-                                        expr (processApplication (Application h) t)
+                                        processApplication (Application (expr h)) t
+                                        --expr (processApplication (Application h) t)
                                     _ -> Debug.crash ("Invalid state" ++ (toString (baseTerm, baseList)))
                         in
                             processApplication (Application baseTerm) baseList
@@ -574,7 +575,13 @@ typeApplication =
 
 typeTuple : Parser s Type
 typeTuple =
-  lazy <| \() -> TypeTuple <$> parens (commaSeparated_ ( choice [ typeAnnotation, type_ ] ))
+  lazy <| \() ->
+      parens (commaSeparated_ ( choice [ typeAnnotation, type_ ] ))
+      |> map (\list ->
+          case list of
+              [ a ] -> a
+              _ -> TypeTuple list
+      )
 
 typeRecordPair : Parser s (Name, Type)
 typeRecordPair =
