@@ -38,7 +38,7 @@ typeTuple =
         TypeTuple <$> parens (commaSeparated_
             ( choice [ typeAnnotation, type_ ] )
         )
-        
+
 reportRemBug msg c lgot rgot =
   Native.Debug.crash <|
     String.concat
@@ -158,7 +158,7 @@ map func { request, toProgress, toError } =
   , toProgress = toProgress >> func
   , toError = toError >> func
   }
-  
+
 initOrUpdate msg maybeModel =
     case maybeModel of
         Uninitialized update { maybeInitialSeed, report, runs, test, init } -> init
@@ -181,6 +181,15 @@ int a b =
       )
 """
 
+functionTypeInLet = test "Function type in let" <| \() -> pass """
+compile name =
+    let
+        hasImport : List String -> Bool
+        hasImport name = True
+    in
+        hasImport name
+"""
+
 
 adtWithRecord = test "Adt with record" <| \() -> pass """
 type Seed =
@@ -197,7 +206,7 @@ asKeyword = test "As keyword" <| \() -> pass """
 balanceHelp tree =
   case tree of
     RBNode_elm_builtin Black as d -> x
-    
+
 split : State -> (State, State)
 split (State s1 s2 as std) =
   let
@@ -211,7 +220,7 @@ split (State s1 s2 as std) =
       Tuple.second (next std)
   in
     (State new_s1 t2, State t1 new_s2)
-    
+
 node =
   VirtualDom.node x
 
@@ -241,7 +250,7 @@ position x y =
       (\\( x_, y_ ) ->
         offsetParent ( x_, y_ ) (position x_ y_)
       )
-      
+
 calculatePos pos { rect, offsetWidth, offsetHeight } =
             { left = -offsetWidth
             , top = (rect.height / 2) - (offsetHeight / 2)
@@ -291,6 +300,7 @@ all =
     , destructureRecord
     , destructureFullyQualifiedAdtName
     , recordUpdate
+    , functionTypeInLet
     , adtWithRecord
     , asKeyword
     , rest

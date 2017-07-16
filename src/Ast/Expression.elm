@@ -22,6 +22,7 @@ module Ast.Expression exposing
 
 -}
 
+import Char
 import Combine exposing (..)
 import Combine.Char exposing (..)
 import Combine.Num
@@ -29,6 +30,7 @@ import Dict exposing (Dict)
 import List exposing (singleton)
 import List.Extra exposing (break)
 import String
+import Hex
 import Regex
 
 import Ast.BinOp exposing (..)
@@ -63,32 +65,39 @@ type Expression
 
 character : Parser s Expression
 character =
-  --Character <$> between_ (char '\'') anyChar
     Character
         <$> between_ (Combine.string "'")
                 (((Combine.string "\\" *> regex "(n|t|r|\\\\|x..)")
                     >>= (\a ->
-                            case a of
-                                "n" ->
+                            case String.uncons a of
+                                Just ( 'n', "" ) ->
                                     succeed '\n'
 
-                                "t" ->
+                                Just ( 't', "" ) ->
                                     succeed '\t'
 
-                                "r" ->
+                                Just ( 'r', "" ) ->
                                     succeed '\x0D'
 
-                                "\\" ->
+                                Just ( '\\', "" ) ->
                                     succeed '\\'
 
-                                "0" ->
+                                Just ( '0', "" ) ->
                                     succeed '\x00'
 
-                                "x00" ->
-                                    succeed '\x00'
+                                Just ( 'x', hex ) ->
+                                    hex
+                                        |> String.toLower
+                                        |> Hex.fromString
+                                        |> Result.map Char.fromCode
+                                        |> Result.map succeed
+                                        |> Result.withDefault (fail "Invalid charcode")
 
-                                a ->
-                                    fail ("No such character as \\" ++ a)
+                                Just other ->
+                                    fail ("No such character as \\" ++ toString other)
+
+                                Nothing ->
+                                    fail "No character"
                         )
                  )
                     <|> anyChar
@@ -196,8 +205,9 @@ letExpression ops =
       Let
         <$> (symbol "let" *> (many <| between_ wsAndComments (
                 choice
-                    [ (maybe functionTypeDeclaration) *> wsAndComments *>
-                        (FunctionBinding <$> functionDeclaration ops)
+                    [ (maybe functionTypeDeclaration)
+                      *> wsAndComments
+                      *> (FunctionBinding <$> functionDeclaration ops)
                     , DestructuringBinding
                         <$> (functionParameter ops)
                         <*> (symbol "=" *> expression ops)
@@ -233,7 +243,9 @@ manyWithLookAhead consumer base repetition =
                     ) - 1
 
             in
-                consumer <$> base <*> many
+                consumer
+                <$> base
+                <*> many
                     ( lookAhead (wsAndComments *>
                         (primitive (\state inputStream ->
                             ( state
@@ -341,25 +353,26 @@ binary ops =
 
 term : OpTable -> Parser s Expression
 term ops =
-  lazy <| \() -> choice
-    [ character
-    , string
-    , float
-    , integer
-    , access
-    , accessFunction
-    , variable
-    , OperatorReference <$> operatorReference
-    , list ops
-    , record ops
-    , simplifiedRecord
-    , recordUpdate ops
-    , parens (expression ops)
-    , tuple ops
-    , parens (many <| Combine.string ",") |> map (\i ->
-            String <| "createTuple" ++ (toString <| List.length i)
-        )
-    ]
+  lazy <| \() ->
+      choice
+        [ character
+        , string
+        , float
+        , integer
+        , access
+        , accessFunction
+        , variable
+        , OperatorReference <$> operatorReference
+        , list ops
+        , record ops
+        , simplifiedRecord
+        , recordUpdate ops
+        , parens (expression ops)
+        , tuple ops
+        , parens (many <| Combine.string ",") |> map (\i ->
+                String <| "createTuple" ++ (toString <| List.length i)
+            )
+        ]
 
 {-| A parser for Elm expressions. -}
 expression : OpTable -> Parser s Expression
@@ -711,7 +724,9 @@ portDeclaration ops =
 
 functionTypeDeclaration : Parser s Statement
 functionTypeDeclaration =
-  FunctionTypeDeclaration <$> (functionOrOperator <* symbol ":") <*> typeAnnotation
+  FunctionTypeDeclaration
+  <$> (functionOrOperator <* symbol ":")
+  <*> typeAnnotation
 
 
 functionDeclaration : OpTable -> Parser s Function
