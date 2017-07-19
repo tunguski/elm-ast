@@ -121,15 +121,15 @@ integer : Parser s Expression
 integer =
   Integer
   <$> choice
-    [ Combine.string "0x"
-      *> regex "[0-9a-fA-F]+"
-      |> andThen (\txt ->
-          case String.toInt ("0x" ++ txt) of
-              Ok i -> succeed i
-              _ -> fail "Not a number"
-      )
-    , Combine.Num.int
-    ]
+        [ Combine.string "0x"
+          *> regex "[0-9a-fA-F]+"
+          |> andThen (\txt ->
+              case String.toInt ("0x" ++ txt) of
+                  Ok i -> succeed i
+                  _ -> fail "Not a number"
+          )
+        , Combine.Num.int
+        ]
 
 
 float : Parser s Expression
@@ -317,7 +317,6 @@ application ops =
                                     [ x ] -> expr x
                                     h :: t ->
                                         processApplication (Application (expr h)) t
-                                        --expr (processApplication (Application h) t)
                                     _ -> Debug.crash ("Invalid state" ++ (toString (baseTerm, baseList)))
                         in
                             processApplication (Application baseTerm) baseList
