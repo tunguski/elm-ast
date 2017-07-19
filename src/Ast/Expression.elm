@@ -119,7 +119,17 @@ string =
 
 integer : Parser s Expression
 integer =
-  Integer <$> Combine.Num.int
+  Integer
+  <$> choice
+    [ Combine.string "0x"
+      *> regex "[0-9a-fA-F]+"
+      |> andThen (\txt ->
+          case String.toInt ("0x" ++ txt) of
+              Ok i -> succeed i
+              _ -> fail "Not a number"
+      )
+    , Combine.Num.int
+    ]
 
 
 float : Parser s Expression
