@@ -4,5 +4,5 @@ node_js:
   - "7"
   - "node"
 before_script:
-  - npm install -g elm elm-test@0.18.0
+  - npm install -g elm@0.18.0 elm-test@0.18.0
 script: elm-test
