@@ -1,5 +1,5 @@
 {
-    "version": "3.0.3",
+    "version": "3.0.4",
     "summary": "A parser for Elm code",
     "repository": "https://github.com/tunguski/elm-ast.git",
     "license": "BSD3",
@@ -14,7 +14,7 @@
     ],
     "dependencies": {
         "Bogdanp/elm-combine": "3.1.1 <= v < 4.0.0",
-	"elm-community/list-extra": "7.1.0 <= v < 8.0.0",
+        "elm-community/list-extra": "7.1.0 <= v < 8.0.0",
         "elm-lang/core": "5.0.0 <= v < 6.0.0",
         "rtfeldman/hex": "1.0.0 <= v < 2.0.0"
     },
