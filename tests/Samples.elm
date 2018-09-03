@@ -5,20 +5,21 @@ import Ast.BinOp exposing (operators)
 import Ast.Expression exposing (..)
 import Expect exposing (..)
 import String
-import Test exposing (describe, test, Test)
+import Test exposing (Test, describe, test)
 
 
 pass : String -> Expectation
 pass i =
-  case parse (String.trim i) of
-    Ok _ ->
-      Expect.pass
+    case parse (String.trim i) of
+        Ok _ ->
+            Expect.pass
 
-    (Err (_, { position }, es)) ->
-      Expect.fail ("failed to parse: " ++ i ++ " at position " ++ toString position ++ " with errors: " ++ toString es)
+        Err ( _, { position }, es ) ->
+            Expect.fail ("failed to parse: " ++ i ++ " at position " ++ toString position ++ " with errors: " ++ toString es)
 
 
-commentAfterCaseBranch = test "Comment after case branch" <| \() -> pass """
+commentAfterCaseBranch =
+    test "Comment after case branch" <| \() -> pass """
 compile =
     let
         moduleName =
@@ -31,7 +32,8 @@ compile =
 """
 
 
-applicationWithLowerIndent = test "Application with lower indent" <| \() -> pass """
+applicationWithLowerIndent =
+    test "Application with lower indent" <| \() -> pass """
 typeTuple : Parser s Type
 typeTuple =
     lazy <| \\() ->
@@ -47,7 +49,8 @@ reportRemBug msg c lgot rgot =
 """
 
 
-applicationWithLowerIndent2 = test "Application with lower indent 2" <| \() -> pass """
+applicationWithLowerIndent2 =
+    test "Application with lower indent 2" <| \() -> pass """
 typesAliases statements env =
     statements
     |> List.map (\\(name, expr) ->
@@ -65,7 +68,8 @@ typesAliases statements env =
 """
 
 
-letBindingWithTupleDestructuring = test "Let binding with tuple destructuring" <| \() -> pass """
+letBindingWithTupleDestructuring =
+    test "Let binding with tuple destructuring" <| \() -> pass """
 complement : Color -> Color
 complement color =
   case color of
@@ -80,13 +84,15 @@ complement color =
 """
 
 
-destructuringOfFunctionArguments = test "Destructuring of function arguments" <| \() -> pass """
+destructuringOfFunctionArguments =
+    test "Destructuring of function arguments" <| \() -> pass """
 never (JustOneMore nvr) =
   never nvr
 """
 
 
-commentsInsideOfTypeDeclaration = test "Comments inside of type declaration" <| \() -> pass """
+commentsInsideOfTypeDeclaration =
+    test "Comments inside of type declaration" <| \() -> pass """
 type NColor
     = Red
     | Black
@@ -100,12 +106,14 @@ fn =
 """
 
 
-effectsModule = test "Effects module" <| \() -> pass """
+effectsModule =
+    test "Effects module" <| \() -> pass """
 effect module Time where { subscription = MySub } exposing (..)
 """
 
 
-operatorReferencedInParentheses = test "Operator referenced in parentheses" <| \() -> pass """
+operatorReferencedInParentheses =
+    test "Operator referenced in parentheses" <| \() -> pass """
 sequence : List (Task x a) -> Task x (List a)
 sequence tasks =
   case tasks of
@@ -117,7 +125,8 @@ sequence tasks =
 """
 
 
-recordCreation = test "Record creation" <| \() -> pass """
+recordCreation =
+    test "Record creation" <| \() -> pass """
 toHsl color =
   case color of
     HSLA h s l a ->
@@ -131,14 +140,16 @@ toHsl color =
 """
 
 
-destructuringInLambdaExpression = test "Destructuring in lambda expression" <| \() -> pass """
+destructuringInLambdaExpression =
+    test "Destructuring in lambda expression" <| \() -> pass """
 int : Int -> Int -> Generator Int
 int a b =
   Generator <| \\(Seed seed) -> seed
 """
 
 
-multipleDeclarationsInLetExpressions = test "Multiple declarations in let expressions" <| \() -> pass """
+multipleDeclarationsInLetExpressions =
+    test "Multiple declarations in let expressions" <| \() -> pass """
 int : Int -> Int -> Generator Int
 int a b =
   Generator <| \\(Seed seed) ->
@@ -151,7 +162,8 @@ int a b =
 """
 
 
-destructureRecord = test "Destructure record" <| \() -> pass """
+destructureRecord =
+    test "Destructure record" <| \() -> pass """
 map : (a -> b) -> TrackedRequest a -> TrackedRequest b
 map func { request, toProgress, toError } =
   { request = Http.Internal.map func request
@@ -165,14 +177,16 @@ initOrUpdate msg maybeModel =
 """
 
 
-destructureFullyQualifiedAdtName = test "Destructure fully qualified ADT name" <| \() -> pass """
+destructureFullyQualifiedAdtName =
+    test "Destructure fully qualified ADT name" <| \() -> pass """
 toTask : Request a -> Task Error a
 toTask (Http.Internal.Request request) =
   Native.Http.toTask request Nothing
 """
 
 
-recordUpdate = test "Record update" <| \() -> pass """
+recordUpdate =
+    test "Record update" <| \() -> pass """
 x =  { y | a = 7 }
 
 int a b =
@@ -181,7 +195,9 @@ int a b =
       )
 """
 
-functionTypeInLet = test "Function type in let" <| \() -> pass """
+
+functionTypeInLet =
+    test "Function type in let" <| \() -> pass """
 compile name =
     let
         hasImport : List String -> Bool
@@ -191,7 +207,8 @@ compile name =
 """
 
 
-adtWithRecord = test "Adt with record" <| \() -> pass """
+adtWithRecord =
+    test "Adt with record" <| \() -> pass """
 type Seed =
   Seed
     { state : State
@@ -202,7 +219,8 @@ type Seed =
 """
 
 
-asKeyword = test "As keyword" <| \() -> pass """
+asKeyword =
+    test "As keyword" <| \() -> pass """
 balanceHelp tree =
   case tree of
     RBNode_elm_builtin Black as d -> x
@@ -229,7 +247,8 @@ aside =
 """
 
 
-rest = test "Rest of cases" <| \() -> pass """
+rest =
+    test "Rest of cases" <| \() -> pass """
 -- zero arity tuple
 lazy t = (\\() -> app t)
 
@@ -285,25 +304,23 @@ a = 7
 
 all : Test
 all =
-  describe "Samples suite"
-    [ commentAfterCaseBranch
-    , applicationWithLowerIndent
-    , applicationWithLowerIndent2
-    , letBindingWithTupleDestructuring
-    , destructuringOfFunctionArguments
-    , commentsInsideOfTypeDeclaration
-    , effectsModule
-    , operatorReferencedInParentheses
-    , recordCreation
-    , destructuringInLambdaExpression
-    , multipleDeclarationsInLetExpressions
-    , destructureRecord
-    , destructureFullyQualifiedAdtName
-    , recordUpdate
-    , functionTypeInLet
-    , adtWithRecord
-    , asKeyword
-    , rest
-    ]
-
-
+    describe "Samples suite"
+        --[ commentAfterCaseBranch
+        --, applicationWithLowerIndent
+        --, applicationWithLowerIndent2
+        [ letBindingWithTupleDestructuring
+        , destructuringOfFunctionArguments
+        , commentsInsideOfTypeDeclaration
+        , effectsModule
+        , operatorReferencedInParentheses
+        , recordCreation
+        , destructuringInLambdaExpression
+        , multipleDeclarationsInLetExpressions
+        , destructureRecord
+        , destructureFullyQualifiedAdtName
+        , recordUpdate
+        , functionTypeInLet
+        , adtWithRecord
+        , asKeyword
+        , rest
+        ]
